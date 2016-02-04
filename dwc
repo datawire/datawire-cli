@@ -1,0 +1,414 @@
+#!/usr/bin/env python
+
+import sys
+
+import argparse
+import getpass
+
+# import json
+# import time
+# import requests
+
+from functools import wraps
+
+from datawire.cloud.identity import Identity
+from datawire.utils import DataWireResult
+from datawire.utils.keys import DataWireKey
+from datawire.utils.state import DataWireState, DataWireError
+
+class DWCParser (object):
+  def __init__(self):
+    self.parser = argparse.ArgumentParser()
+
+    self.parser.add_argument('-v', '--verbose',
+                             action='count', default=0, help='increase verbosity')
+
+    self.parser.add_argument('-q', '--quiet',
+                             action='store_true', default=False, help='force silence')
+
+    self.parser.add_argument('--registrar-url', '--base-url', '--baseurl',
+                             action='store', dest='base_url',
+                             default='https://identity.datawire.io',
+                             help='URL for Cloud Registrar')
+
+    self.parser.add_argument('--local',
+                             action='store_const', dest='base_url',
+                             const='http://localhost:8080',
+                             help='Use a local Cloud Registrar')
+
+    self.parser.add_argument('--state', '--state-path',
+                             action='store', dest='state_path',
+                             help='Override the state file (default ~/.datawire/datawire.json)')
+
+    self.subparsers = self.parser.add_subparsers(help='types of command', dest="command")
+
+    self.handlers = {}
+
+  def add_command(self, handler, cmd, cmd_help, arg_info):
+    cmd_parser = self.subparsers.add_parser(cmd, help=cmd_help)
+
+    if arg_info:
+      for args, kwargs in arg_info:
+        cmd_parser.add_argument(*args, **kwargs)
+
+    self.handlers[cmd] = handler
+
+  def parse(self, *cmdline):
+    args = self.parser.parse_args(*cmdline)
+
+    cmd = args.command
+
+    handler = self.handlers.get(cmd, None)
+
+    if not handler:
+      print("%s: unimplemented command" % cmd)
+    else:
+      # Basic setup: first grab DataWire state...
+      dwState = DataWireState(args.state_path)
+
+      # ...then grab the public key we need...
+      # rc = loadPublicKey('keys/dwc-cloud-pub.pem')
+      rc = loadPublicKey('keys/dwc-cloud-hmac.key')
+
+      if not rc:
+        sys.stderr.write("missing public key: %s\n" % rc.error)
+        sys.exit(1)
+
+      # ...then instantiate the client.
+      print("Setting up to use Cloud Registrar at %s" % args.base_url)
+      dwc = DataWireRegistrarClient(args.base_url, rc.publicKey)
+
+      return handler(self, dwc, dwState, args)
+
+  ### DECORATORS
+  def command(self, cmd, cmd_help):
+    def factory(callable):
+      arg_info = getattr(callable, '_dwc_args', None)
+
+      if arg_info is not None:
+        delattr(callable, '_dwc_args')
+        arg_info = reversed(list(arg_info))
+
+      self.add_command(callable, cmd, cmd_help, arg_info)
+
+    return factory
+
+  def arg(outer_self, *outer_args, **outer_kwargs):
+    def factory(callable):
+      dwcArgs = getattr(callable, '_dwc_args', None)
+
+      if not dwcArgs:
+        dwcArgs = []
+        setattr(callable, '_dwc_args', dwcArgs)
+
+      dwcArgs.append((outer_args, outer_kwargs))
+
+      return callable
+
+    return factory
+
+  def needs_user_token(outer_self):
+    def factory(callable):
+      @wraps(callable)
+      def decorated(self, dwc, dwState, args):
+        try:
+          user_token = dwState.currentUserToken()
+        except DataWireError:
+          return DataWireResult.fromError("you must be logged in to use this command")
+
+        return callable(self, dwc, dwState, args)
+
+      return decorated
+
+    return factory
+
+parser = DWCParser()
+
+def defaultUser():
+  return getpass.getuser()
+
+def getPW(prompt, pw, verify=False):
+  if not pw:
+    while True:
+      pw1 = getpass.getpass(prompt)
+
+      if verify:
+        pw2 = getpass.getpass("Again: ")
+
+      if not verify or (pw1 == pw2):
+        pw = pw1
+        break
+      else:
+        print("They don't match, try again.")
+
+  return pw
+
+def show_service_token(dwc, dwState, service_handle):
+  org = dwState.currentOrg()
+
+  if 'service_tokens' not in org:
+    return DataWireResult.fromError("You haven't created any services in this org!")
+
+  service_tokens = org['service_tokens']
+
+  if service_handle not in service_tokens:
+    return DataWireResult.fromError("You haven't created the %s service in this org!" % service_handle)
+
+  print("svc_token = '%s'" % service_tokens[service_handle])
+
+  return DataWireResult.OK(token=service_tokens[service_handle])
+
+@parser.command("create-org", "Create a new organization")
+@parser.arg('org_name',
+            help="Name of new organization")
+@parser.arg('admin_name',
+            help='Name of organization administrator')
+@parser.arg('admin_email',
+            help='Email address of organization administrator')
+@parser.arg('--adminpass', '--password', '--pw', 
+            help='Password of organization administrator (will prompt if not given)')
+@parser.arg('--test', action='store_true', dest='isATest', default=False,
+            help='Mark organization as a test org')
+def handle_org_create(self, dwc, dwState, args):
+  org_name = args.org_name
+  admin_name = args.admin_name
+  admin_email = args.admin_email
+
+  # print("org_create %s (%s, %s)" % (org_name, admin_name, admin_email))
+
+  adminpass = getPW("Password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
+
+  if not adminpass:
+    return DataWireResult.fromError("admin password is required")
+
+  rc = dwc.orgCreate(org_name, admin_name, admin_email, adminpass, isATest=args.isATest)
+
+  # If that worked, we are effectively logged in now.
+  if rc:
+    orgID = rc.orgID
+
+    print("Now logged in as [%s]%s" % (orgID, admin_email))
+
+    dwState['orgID'] = orgID
+
+    if not 'orgs' in dwState:
+      dwState['orgs'] = {}
+
+    orgInfo = {
+      'email': admin_email,
+      'user_token': rc.token,
+      'org_name': org_name
+    }
+
+    dwState['orgs'][orgID] = orgInfo
+
+    dwState.save()
+
+  return rc
+
+@parser.command("invite-user", "Invite a new user to your organization")
+@parser.arg('email',
+            help='Email address of new user')
+@parser.arg('--non-admin', '--no-admin', '--mortal',
+            action='store_true', dest='mortal', default=False,
+            help="Create a non-admin user")
+@parser.arg('--no-svc', '--no-reqsvc', '--no-request-services',
+            action='store_false', dest='allow_reqsvc', default=True,
+            help="Don't allow this user to request services")
+def handle_invite_user(self, dwc, dwState, args):
+  email = args.email
+
+  org = dwState.currentOrg()
+  orgID = dwState.currentOrgID()
+  user_token = dwState.currentUserToken()
+
+  scopes = []
+
+  if not args.mortal:
+    scopes.append('dw:admin0')
+
+  if args.allow_reqsvc:
+    scopes.append('dw:reqSvc0')  
+
+  print("Inviting %s to %s..." % (email, orgID))
+
+  rc = dwc.userInvite(orgID, user_token, email, scopes=scopes)
+
+  if rc:
+    print("Success! Send them:")
+    print("")
+    print("dwc accept-invitation '%s' '%s' '%s'" % (orgID, rc.invitation, email))
+
+  return rc
+
+@parser.command("accept-invitation", "Accept an invitation to an organization")
+@parser.arg('org_id',
+            help="ID of organization")
+@parser.arg('invitation_code',
+            help='Invitation code')
+@parser.arg('email',
+            help='Your email address')
+@parser.arg('--name', '--fullname', 
+            help='Your full name (will prompt if not given)')
+@parser.arg('--password', '--pw', 
+            help='Your password (will prompt if not given)')
+def handle_accept_invitation(self, dwc, dwState, args):
+  orgID = args.org_id
+  invitation = args.invitation_code
+  email = args.email
+
+  name = args.name
+
+  while not name:
+    sys.stdout.write("Name for %s: " % email)
+    sys.stdout.flush()
+
+    name = sys.stdin.readline().strip()
+
+  password = getPW("Password for %s: " % email, args.password, verify=True)
+
+  if not password:
+    return DataWireResult.fromError("password is required")
+
+  print("Accepting invitation to %s..." % orgID)
+
+  rc = dwc.userAcceptInvitation(orgID, email, invitation, name, password)
+
+  if rc:
+    print("Now logged in as [%s]%s" % (orgID, email))
+
+    dwState['orgID'] = orgID
+
+    if not 'orgs' in dwState:
+      dwState['orgs'] = {}
+
+    orgInfo = {
+      'email': email,
+      'user_token': rc.token,
+      # 'org_name': org_name
+    }
+
+    dwState['orgs'][orgID] = orgInfo
+
+    dwState.save()
+
+  return rc
+
+@parser.command("login", "Login")
+@parser.arg('email',
+            help='Email address to log in with')
+@parser.arg('--password', '--pw',
+            action='store', dest='password',
+            help='Password (will prompt if not given)')
+@parser.arg('--org-id', '--organization-id', '--orgid',
+            action='store', dest='orgID',
+            help='Organization ID (not usually necessary)')
+def handle_login(self, dwc, dwState, args):
+  email = args.email
+  orgID = args.orgID
+
+  idString = "%s%s" % (("[%s]" % orgID) if orgID else "", email)
+
+  password = getPW("Password for %s: " % idString, args.password)
+
+  if not password:
+    return DataWireResult.fromError("password is required")
+
+  rc = dwc.userAuth(email, password, orgID=orgID)
+
+  # If that worked, we are logged in now.
+  if rc:    
+    orgID = rc.orgID
+    email = rc.email
+    token = rc.token
+
+    print("Now logged in as [%s]%s" % (orgID, email))
+
+    dwState['orgID'] = orgID
+
+    if not 'orgs' in dwState:
+      dwState['orgs'] = {}
+
+    orgInfo = {
+      'email': email,
+      'user_token': token,
+      # 'org_name': org_name
+    }
+
+    dwState['orgs'][orgID] = orgInfo
+
+    dwState.save()
+
+  return rc
+
+@parser.command("logout", "Logout")
+@parser.arg('--force', '--yes',
+            action="store_true", dest="force",
+            help="Don't prompt for confirmation, just do it.")
+def handle_logout(self, dwc, dwState, args):
+  if not args.force:
+    sys.stderr.write("THIS WILL COMPLETELY LOG YOU OUT AND REMOVE ALL YOUR DATAWIRE STATE.\n")
+    sys.stderr.write("Continue? ")
+
+    reply = raw_input()
+
+    if (reply.lower() != 'y') and (reply.lower() != 'yes'):
+      sys.stderr.write("OK, carry on.\n")
+      sys.exit(1)
+
+  dwState.smite()
+  return DataWireResult(smote=True)
+
+@parser.command("status", "Show DataWire status information")
+def handle_status(self, dwc, dwState, args):
+  if len(dwState) == 0:
+    print("No DataWire status to show.")
+  else:
+    print(dwState.toJSON())
+
+  return DataWireResult.OK()
+
+@parser.command("create-service", "Create a new service")
+@parser.arg("service_handle", help="The handle for the new service")
+@parser.needs_user_token()
+def handle_service_create(self, dwc, dwState, args):
+  service_handle = args.service_handle
+
+  org = dwState.currentOrg()
+  orgID = dwState.currentOrgID()
+  user_token = dwState.currentUserToken()
+
+  print("Creating service %s in %s..." % (service_handle, orgID))
+
+  rc = dwc.serviceCreate(orgID, user_token, service_handle)
+
+  if rc:
+    print("...created!")
+
+    if 'service_tokens' not in org:
+      org['service_tokens'] = {}
+
+    org['service_tokens'][service_handle] = rc.token
+
+    dwState.save()
+
+  return show_service_token(dwc, dwState, service_handle)
+
+@parser.command("service-token", "Show a service token")
+@parser.arg("service_handle", help="The handle for the service")
+def handle_service_create(self, dwc, dwState, args):
+  service_handle = args.service_handle
+
+  return show_service_token(dwc, dwState, service_handle)
+
+rc = parser.parse()
+
+if not rc:
+  sys.stderr.write("failure: %s\n" % rc.error)
+  sys.exit(1)
+else:
+  sys.exit(0)
+
+
+
+
