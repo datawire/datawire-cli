@@ -8,10 +8,19 @@ DataWireRegistrar client
 
 from ..utils import DataWireResult, DataWireCredential # Needs to move to .utils
 
+class DataWireIdentityError (Exception):
+  pass
+
+class DataWireIdentityNoKeyError (DataWireIdentityError):
+  pass
+
 class Identity (object):
-  def __init__(self, baseURL, publicKey):
+  def __init__(self, baseURL, key, really_dont_verify_tokens=False):
     self.baseURL = baseURL
-    self.publicKey = publicKey
+    self.publicKey = key
+
+    if (key is None) and not really_dont_verify_tokens:
+      raise DataWireIdentityNoKeyError("Identity requires public key for token verification")
 
   def makeURL(self, *elements):
     return "%s/%s" % (self.baseURL, "/".join(elements))
@@ -101,9 +110,29 @@ class Identity (object):
 
     return self.checkResponse(url, resp, required=required)
 
+  def delete(self, target=None, args=None, required=None, token=None):
+    """
+    DELETE to an endpoint that will respond with a JSON-encoded DataWireResult.
+
+    Returns a DataWireResult, after making sure that all the requiredResults are present
+    in the DataWireResult.
+    """
+
+    url, headers = self.httpParams(target, token)
+    resp = requests.delete(url, json=args, headers=headers)
+
+    return self.checkResponse(url, resp, required=required)
+
   def checkToken(self, token, orgID, scopesMust, scopesMustNot):
     # First, is the credential valid?
-    rc = DataWireCredential.fromJWT(token, self.publicKey, orgID)
+
+    really_dont_verify_tokens = False
+
+    if not self.publicKey:
+      really_dont_verify_tokens = True
+
+    rc = DataWireCredential.fromJWT(token, self.publicKey, orgID,
+                                    really_dont_verify_tokens=really_dont_verify_tokens)
 
     if not rc:
       # Nope. That ain't good.
@@ -148,6 +177,14 @@ class Identity (object):
                    token=superToken,
                    required=[ 'orgIDs' ]
                   )
+
+    return rc
+
+  def orgDelete(self, orgID, superToken):
+    rc = self.delete( target=[ 'v1', 'orgs', orgID ],
+                      token=superToken,
+                      required=[ 'count' ]
+                    )
 
     return rc
 

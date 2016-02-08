@@ -272,7 +272,8 @@ class DataWireCredential (UnicodeMixin):
     return DataWireResult.fromErrorAndResults(error=errorMessage, cred=cred)
 
   @classmethod
-  def fromJWT(self, token, publicKey, needOrgID, algorithm='HS256'):
+  def fromJWT(self, token, publicKey, needOrgID, algorithm='HS256',
+              really_dont_verify_tokens=False):
     """
     Decode a JWT into a credential. You must know the orgID for which the
     cred should have been issued, because we need to verify that it matches.
@@ -285,10 +286,24 @@ class DataWireCredential (UnicodeMixin):
     errorMessage = None
 
     try:
-      claims = jwt.decode(token, publicKey,
-                          algorithms=algorithm,
-                          audience=needOrgID,
-                          issuer='cloud-hub.datawire.io')
+      if not publicKey:
+        if not really_dont_verify_tokens:
+          errorMessage = "public key is required to decode JWT"
+        else:
+          # Brutal hackery here.
+          fields = token.split('.')
+
+          if len(fields) != 3:
+            errorMessage = "malformed token (must have three fields)"
+          elif not fields[1]:
+            errorMessage = "malformed token (claims field not present)"
+          else:
+            claims = json.loads(base64.decode(fields[1]))
+      else:
+        claims = jwt.decode(token, publicKey,
+                            algorithms=algorithm,
+                            audience=needOrgID,
+                            issuer='cloud-hub.datawire.io')
     except JWSError as error:
       errorMessage = error.message
 
