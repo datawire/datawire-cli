@@ -13,10 +13,10 @@ develop:
 	python setup.py develop
 
 test local-tests: develop
-	nosetests --with-coverage --cover-package=datawire --where=tests-local
+	nosetests --with-coverage --cover-package=datawire tests-local
 
 all-tests: develop
-	nosetests --with-coverage --cover-package=datawire --where=tests-local --where=tests-remote
+	nosetests --with-coverage --cover-package=datawire tests-local tests-remote
 
 clean:
 	-find . -iname '*.pyc' -print0 | xargs -0 rm -f
