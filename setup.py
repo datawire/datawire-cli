@@ -1,7 +1,10 @@
 from setuptools import setup, find_packages
+
+VERSION = open('VERSION', 'r').read().strip()
+
 setup(
     name = "datawire-cloudtools",
-    version = "0.1",
+    version = VERSION,
     packages = find_packages(),
     scripts = [ 'dwc' ],
 
