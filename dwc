@@ -51,6 +51,10 @@ class DWCParser (object):
       for args, kwargs in arg_info:
         cmd_parser.add_argument(*args, **kwargs)
 
+    cmd_parser.add_argument('--skip-verification', '--noverify',
+                            action='store_true', dest='skipVerificaton', default=False,
+                            help="Don't verify signatures of tokens from Datawire Connect")
+
     self.handlers[cmd] = handler
 
   def parse(self, *cmdline):
@@ -66,17 +70,29 @@ class DWCParser (object):
       # Basic setup: first grab DataWire state...
       dwState = DataWireState(args.state_path)
 
-      # ...then grab the public key we need...
       # rc = DataWireKey.load_public('keys/dwc-identity.pem')
       rc = DataWireKey.load_public('keys/dwc-identity.key')
+      publicKey = None
+      really_dont_verify_tokens=False
 
-      if not rc:
+      if rc:
+        publicKey = rc.publicKey
+      else:
         sys.stderr.write("missing public key: %s\n" % rc.error)
-        sys.exit(1)
+
+        if not getattr(args, "skipVerificaton", False):
+          sys.exit(1)
+        else:
+          sys.stderr.write("NOT VERIFYING TOKENS!\n")
+          sys.stderr.flush()
+
+          really_dont_verify_tokens=True
 
       # ...then instantiate the client.
       print("Setting up to use Cloud Registrar at %s" % args.base_url)
-      dwc = Identity(args.base_url, rc.publicKey)
+
+      dwc = Identity(args.base_url, publicKey,
+                     really_dont_verify_tokens=really_dont_verify_tokens)
 
       return handler(self, dwc, dwState, args)
 

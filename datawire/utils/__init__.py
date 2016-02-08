@@ -1,5 +1,6 @@
 import sys
 
+import base64
 import collections
 import json
 import time
@@ -295,10 +296,28 @@ class DataWireCredential (UnicodeMixin):
 
           if len(fields) != 3:
             errorMessage = "malformed token (must have three fields)"
+          elif not fields[0]:
+            errorMessage = "malformed token (header field not present)"
           elif not fields[1]:
             errorMessage = "malformed token (claims field not present)"
           else:
-            claims = json.loads(base64.decode(fields[1]))
+            b64Header = fields[0]
+            b64Claims = fields[1]
+
+            while len(b64Header) % 3:
+              b64Header += '='
+
+            while len(b64Claims) % 3:
+              b64Claims += '='
+
+            header = json.loads(base64.b64decode(b64Header))
+
+            if (('typ' not in header) or (header['typ'] != 'JWT')):
+              errorMessage = 'malformed token (not a JWT)'
+            elif (('alg' not in header) or (header['alg'] != 'HS256')):
+              errorMessage = 'malformed token (not HS256)'
+            else:
+              claims = json.loads(base64.b64decode(b64Claims))
       else:
         claims = jwt.decode(token, publicKey,
                             algorithms=algorithm,

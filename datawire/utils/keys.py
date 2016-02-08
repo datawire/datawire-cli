@@ -3,12 +3,16 @@
 import sys
 
 import base64
+import errno
 import json
 
 from . import DataWireResult
 from .random import DataWireRandom
 
 class DataWireKeyError (Exception):
+  pass
+
+class DataWireKeyNotPresentError (DataWireKeyError):
   pass
 
 class DataWireKeyUnimplementedError (DataWireKeyError):
@@ -54,7 +58,13 @@ class DataWireHMACKey (object):
   @classmethod
   def load(self, path):
     """ Load an HMAC key from path """
-    encodedKey = open(path, "r").read().strip()
+    try:
+      encodedKey = open(path, "r").read().strip()
+    except IOError as e:
+      if e.errno == errno.ENOENT:
+        raise DataWireKeyNotPresentError("key not present: %s" % path)
+      else:
+        raise
 
     return DataWireHMACKey.decode(encodedKey)
 
@@ -86,7 +96,15 @@ class DataWireRSAKey (object):
     and public key information in it). Using an X.509 certificate WILL NOT WORK.
     """
 
-    pem = open(path, "r").read()
+    pem = None
+
+    try:
+      pem = open(path, "r").read()
+    except IOError as e:
+      if e.errno == errno.ENOENT:
+        raise DataWireKeyNotPresentError("key not present: %s" % path)
+      else:
+        raise
 
     if not pem.startswith('-----BEGIN RSA PRIVATE KEY-----'):
       raise DataWireKeyBadFormatError("not a PEM-format RSA private key")
@@ -102,7 +120,15 @@ class DataWireRSAKey (object):
     key information in it). Using an X.509 certificate WILL NOT WORK.
     """
 
-    pem = open(path, "r").read()
+    pem = None
+
+    try:
+      pem = open(path, "r").read()
+    except IOError as e:
+      if e.errno == errno.ENOENT:
+        raise DataWireKeyNotPresentError("key not present: %s" % path)
+      else:
+        raise
 
     if not pem.startswith('-----BEGIN PUBLIC KEY-----'):
       raise DataWireKeyBadFormatError("not a PEM-format RSA public key")
