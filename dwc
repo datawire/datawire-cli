@@ -51,9 +51,9 @@ class DWCParser (object):
       for args, kwargs in arg_info:
         cmd_parser.add_argument(*args, **kwargs)
 
-    cmd_parser.add_argument('--skip-verification', '--noverify',
-                            action='store_true', dest='skipVerificaton', default=False,
-                            help="Don't verify signatures of tokens from Datawire Connect")
+    cmd_parser.add_argument('--verify', '--verify-tokens', '--require-verification', 
+                            action='store_true', dest='mustVerify', default=False,
+                            help="Verify signatures of tokens from Datawire Connect")
 
     self.handlers[cmd] = handler
 
@@ -80,7 +80,7 @@ class DWCParser (object):
       else:
         sys.stderr.write("missing public key: %s\n" % rc.error)
 
-        if not getattr(args, "skipVerificaton", False):
+        if getattr(args, "mustVerify", False):
           sys.exit(1)
         else:
           sys.stderr.write("NOT VERIFYING TOKENS!\n")
@@ -424,7 +424,3 @@ if not rc:
   sys.exit(1)
 else:
   sys.exit(0)
-
-
-
-
