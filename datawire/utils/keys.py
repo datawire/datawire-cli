@@ -3,10 +3,10 @@
 import sys
 
 import base64
-# import collections
 import json
 
-# from . import UnicodeMixin
+from . import DataWireResult
+from .random import DataWireRandom
 
 class DataWireKeyError (Exception):
   pass
@@ -23,10 +23,11 @@ class DataWireHMACKey (object):
     This is not the entry point you want. Check out DataWireHMACKey.new() and 
     DataWireHMACKey.load().
     """
-    self.key = key
+    self.public_key = key
+    self.private_key = key
 
   def encoded(self):
-    return base64.urlsafe_b64encode(self.key)
+    return base64.urlsafe_b64encode(self.public_key)
 
   @classmethod
   def new(self, bits=384, randomness=None):
@@ -42,7 +43,7 @@ class DataWireHMACKey (object):
     return DataWireHMACKey(key=randomness.randomBitString(bits))
 
   @classmethod
-  def decode(encodedKey):
+  def decode(self, encodedKey):
     """
     Accepts an HMAC key encoded per RFC4648 section 5 and returns the corresponding
     raw key bits.
@@ -51,7 +52,7 @@ class DataWireHMACKey (object):
     return DataWireHMACKey(key=base64.urlsafe_b64decode(encodedKey))
 
   @classmethod
-  def load(path):
+  def load(self, path):
     """ Load an HMAC key from path """
     encodedKey = open(path, "r").read().strip()
 
@@ -77,7 +78,7 @@ class DataWireRSAKey (object):
     raise DataWireKeyUnimplementedError("Generating new RSA keys is not yet implemented.")
 
   @classmethod
-  def load_private(path):
+  def load_private(self, path):
     """ 
     Load a RSA private key from a PEM-encoded file.
 
@@ -93,7 +94,7 @@ class DataWireRSAKey (object):
     return DataWireRSAKey(private_key=pem)
 
   @classmethod
-  def load_public(path):
+  def load_public(self, path):
     """ 
     Load a RSA public key from a PEM-encoded file.
 
@@ -115,7 +116,7 @@ class DataWireKey (object):
   """
 
   @classmethod
-  def load_private(path, type='HMAC'):
+  def load_private(self, path, keyType='HMAC'):
     """
     Load an HMAC key from path
 
@@ -123,18 +124,18 @@ class DataWireKey (object):
     RS256 later.
     """
 
-    if type != 'HMAC':
-      raise DataWireKeyUnimplementedError("only HMAC keys are currently implemented")
+    if keyType != 'HMAC':
+      raise DataWireKeyUnimplementedError("only HMAC keys are currently implemented, not %s" % keyType)
 
     try:
       key = DataWireHMACKey.load(path)
 
-      return DataWireResult.OK(privateKey=key.bits)
+      return DataWireResult.OK(privateKey=key.private_key)
     except DataWireKeyError as e:
       return DataWireResult.fromError(e.message)
 
   @classmethod
-  def load_public(path, type='HMAC'):
+  def load_public(self, path, keyType='HMAC'):
     """
     Load an HMAC key from path
 
@@ -142,12 +143,12 @@ class DataWireKey (object):
     RS256 later.
     """
 
-    if type != 'HMAC':
-      raise DataWireKeyUnimplementedError("only HMAC keys are currently implemented")
+    if keyType != 'HMAC':
+      raise DataWireKeyUnimplementedError("only HMAC keys are currently implemented, not %s" % keyType)
 
     try:
       key = DataWireHMACKey.load(path)
 
-      return DataWireResult.OK(publicKey=key.bits)
+      return DataWireResult.OK(publicKey=key.public_key)
     except DataWireKeyError as e:
       return DataWireResult.fromError(e.message)

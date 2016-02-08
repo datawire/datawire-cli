@@ -1,6 +1,8 @@
+from __future__ import absolute_import
+
 import base64
 import json
-import random
+import random as stdRandom
 
 class DataWireRandom (object):
   # 34 because we use 0-9 A-Z, but we deliberately drop letters O and I
@@ -8,7 +10,7 @@ class DataWireRandom (object):
   bitsPerBase34Char = 5.08746284125034  # math.log(34) / math.log(2)
 
   def __init__(self):
-    self.random = random.SystemRandom()
+    self.random = stdRandom.SystemRandom()
 
   def prettyJSON(self, obj):
     return json.dumps(obj, indent=4, separators=(',',':'), sort_keys=True)

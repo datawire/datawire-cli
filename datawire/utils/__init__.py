@@ -1,6 +1,9 @@
 import sys
 
+import collections
 import json
+import time
+import uuid
 
 from jose import jwt
 from jose.exceptions import JWSError
