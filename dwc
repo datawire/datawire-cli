@@ -67,8 +67,8 @@ class DWCParser (object):
       dwState = DataWireState(args.state_path)
 
       # ...then grab the public key we need...
-      # rc = loadPublicKey('keys/dwc-cloud-pub.pem')
-      rc = loadPublicKey('keys/dwc-cloud-hmac.key')
+      # rc = DataWireKey.load_public('keys/dwc-identity.pem')
+      rc = DataWireKey.load_public('keys/dwc-identity.key')
 
       if not rc:
         sys.stderr.write("missing public key: %s\n" % rc.error)
@@ -76,7 +76,7 @@ class DWCParser (object):
 
       # ...then instantiate the client.
       print("Setting up to use Cloud Registrar at %s" % args.base_url)
-      dwc = DataWireRegistrarClient(args.base_url, rc.publicKey)
+      dwc = Identity(args.base_url, rc.publicKey)
 
       return handler(self, dwc, dwState, args)
 
