@@ -291,33 +291,14 @@ class DataWireCredential (UnicodeMixin):
         if not really_dont_verify_tokens:
           errorMessage = "public key is required to decode JWT"
         else:
-          # Brutal hackery here.
-          fields = token.split('.')
+          header = jwt.get_unverified_headers(token)
 
-          if len(fields) != 3:
-            errorMessage = "malformed token (must have three fields)"
-          elif not fields[0]:
-            errorMessage = "malformed token (header field not present)"
-          elif not fields[1]:
-            errorMessage = "malformed token (claims field not present)"
+          if (('typ' not in header) or (header['typ'] != 'JWT')):
+            errorMessage = 'malformed token (not a JWT)'
+          elif (('alg' not in header) or (header['alg'] != 'HS256')):
+            errorMessage = 'malformed token (not HS256)'
           else:
-            b64Header = fields[0]
-            b64Claims = fields[1]
-
-            while len(b64Header) % 3:
-              b64Header += '='
-
-            while len(b64Claims) % 3:
-              b64Claims += '='
-
-            header = json.loads(base64.b64decode(b64Header))
-
-            if (('typ' not in header) or (header['typ'] != 'JWT')):
-              errorMessage = 'malformed token (not a JWT)'
-            elif (('alg' not in header) or (header['alg'] != 'HS256')):
-              errorMessage = 'malformed token (not HS256)'
-            else:
-              claims = json.loads(base64.b64decode(b64Claims))
+            claims = jwt.get_unverified_claims(token)
       else:
         claims = jwt.decode(token, publicKey,
                             algorithms=algorithm,
