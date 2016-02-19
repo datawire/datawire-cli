@@ -487,6 +487,10 @@ def handle_service_create(self, dwc, dwState, args):
   orgID = dwState.currentOrgID()
   user_token = dwState.currentUserToken()
 
+  if (('service_tokens' in org) and
+      (service_handle in org['service_tokens'])):
+    return DataWireResult.fromError("You already have a service named '%s'" % service_handle)
+
   print("Creating service %s in %s..." % (service_handle, orgID))
 
   rc = dwc.serviceCreate(orgID, user_token, service_handle)
