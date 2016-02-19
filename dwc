@@ -361,6 +361,7 @@ def handle_login(self, dwc, dwState, args):
 @parser.arg('--force', '--yes',
             action="store_true", dest="force",
             help="Don't prompt for confirmation, just do it.")
+@parser.needs_user_token()
 def handle_logout(self, dwc, dwState, args):
   if not args.force:
     sys.stderr.write("THIS WILL COMPLETELY LOG YOU OUT AND REMOVE ALL YOUR DATAWIRE STATE.\n")
