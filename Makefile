@@ -26,6 +26,11 @@ keyInfo:
 all-tests: develop keyInfo
 	nosetests --with-coverage --cover-package=datawire tests-local tests-remote
 
+publish: all-tests wheel
+	pip install twine
+	python setup.py register
+	twine upload -s dist/datawire*cloud*$(VERSION)*
+
 clean:
 	-find . -iname '*.pyc' -print0 | xargs -0 rm -f
 	-rm -rf build
