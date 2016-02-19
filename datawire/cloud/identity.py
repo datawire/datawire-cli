@@ -123,7 +123,7 @@ class Identity (object):
 
     return self.checkResponse(url, resp, required=required)
 
-  def checkToken(self, token, orgID, scopesMust, scopesMustNot):
+  def credentialFromToken(self, token, orgID):
     # First, is the credential valid?
 
     really_dont_verify_tokens = False
@@ -131,14 +131,19 @@ class Identity (object):
     if not self.publicKey:
       really_dont_verify_tokens = True
 
-    rc = DataWireCredential.fromJWT(token, self.publicKey, orgID,
-                                    really_dont_verify_tokens=really_dont_verify_tokens)
+    return DataWireCredential.fromJWT(token, self.publicKey, orgID,
+                                      really_dont_verify_tokens=really_dont_verify_tokens)
+
+  def checkToken(self, token, orgID, scopesMust, scopesMustNot):
+    # Try to grab the credential underlying our token...
+
+    rc = self.credentialFromToken(token, orgID)
 
     if not rc:
-      # Nope. That ain't good.
+      # Well that ain't good.
       return rc
 
-    # So far so good! Grab the credential...
+    # OK! Time to check to make sure the scopes match.
     cred = rc.cred
 
     missingScopes = [ scope for scope in scopesMust if not cred.hasScope(scope) ]

@@ -15,7 +15,15 @@ develop:
 test local-tests: develop
 	nosetests --with-coverage --cover-package=datawire tests-local
 
-all-tests: develop
+keyInfo:
+	@if [ \( ! -d keys \) -o \
+	      \( ! -s keys/dwc-identity.key \) -o \
+	      \( ! -s keys/dwc-super-admin.jwt \) ]; then \
+		echo "You need the Datawire Identity keys to run the remote tests." >&2 ;\
+		exit 1 ;\
+	fi
+
+all-tests: develop keyInfo
 	nosetests --with-coverage --cover-package=datawire tests-local tests-remote
 
 clean:
