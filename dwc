@@ -12,7 +12,7 @@ import getpass
 from functools import wraps
 
 from datawire.cloud.identity import Identity
-from datawire.utils import DataWireResult
+from datawire.utils import DataWireResult, DataWireCredential
 from datawire.utils.keys import DataWireKey
 from datawire.utils.state import DataWireState, DataWireError
 
@@ -406,12 +406,74 @@ def handle_logout(self, dwc, dwState, args):
   dwState.smite()
   return DataWireResult(smote=True)
 
+def helpWhenNotLoggedIn():
+  print("Not presently logged in.")
+  print("")
+  print("To log into an existing user, use dwc login.")
+  print("To accept an invitation to join an organization, use dwc accept-invitation.")
+  print("To create a new organization, use dwc create-org.")
+
 @parser.command("status", "Show DataWire status information")
 def handle_status(self, dwc, dwState, args):
   if len(dwState) == 0:
-    print("No DataWire status to show.")
-  else:
-    print(dwState.toJSON())
+    helpWhenNotLoggedIn()
+    return DataWireResult.OK()
+
+  org = dwState.currentOrg()
+  orgID = dwState.currentOrgID()
+
+  if not org or not orgID:
+    helpWhenNotLoggedIn()
+    return DataWireResult.OK()
+
+  user_token = dwState.currentUserToken()
+
+  if not user_token:
+    helpWhenNotLoggedIn()
+    return DataWireResult.OK()
+
+  # OK. Once all that is done, crack the user token to grab its scopes.
+
+  rc = dwc.credentialFromToken(user_token, orgID)
+
+  if not rc:
+    # WTFO?
+    print("You seem to be logged in, but incorrectly. You should probably use dwc logout")
+    print("to log out, then dwc login to log back in.")
+    return DataWireResult.OK()
+
+  cred = rc.cred
+
+  email = cred.email
+  scopes = cred.scopes
+
+  print("Logged in as [%s]%s:" % (orgID, email))
+  print("")
+  print("Capabilities:")
+
+  for scope in scopes:
+    prettyName = DataWireCredential.prettyScopeName(scope)
+
+    if prettyName:
+      prettyStr = ": %s" % prettyName
+
+    print("- %s%s" % (scope, prettyStr))
+
+  someServices = False
+
+  if 'service_tokens' in org:
+    for serviceHandle in sorted(org['service_tokens'].keys()):
+      if not someServices:
+        print("")
+        print("Services defined:")
+
+        someServices = True
+
+      print("- %s" % serviceHandle)
+
+  if not someServices:
+    print("")
+    print("No services defined")
 
   return DataWireResult.OK()
 

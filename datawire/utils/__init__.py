@@ -143,6 +143,14 @@ class DataWireCredential (UnicodeMixin):
   nbf (optional) - not-before time, seconds since epoch; if None will be now
   """
 
+  prettyScopeNames = {
+    'dw:admin0': 'Organization administator',
+    'dw:organization0': 'Organization',
+    'dw:reqSvc0': 'Able to request service tokens',
+    'dw:service0': 'Service',
+    'dw:user0': 'User',
+  }
+
   def __init__(self, orgID, credID, scopes, ownerEmail, email=None, tokenID=None, iat=None, nbf=None):
     if tokenID is None:
       tokenID = unicode(uuid.uuid4())
@@ -207,6 +215,10 @@ class DataWireCredential (UnicodeMixin):
 
   def toJWT(self, privateKey, algorithm='HS256'):
     return jwt.encode(self.getClaims(), privateKey, algorithm=algorithm)
+
+  @classmethod
+  def prettyScopeName(self, scope):
+    return self.prettyScopeNames.get(scope, '')
 
   @classmethod
   def fromJSON(self, inputJSON, needOrgID):
