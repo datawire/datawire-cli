@@ -12,7 +12,7 @@ import getpass
 from functools import wraps
 
 from datawire.cloud.identity import Identity
-from datawire.utils import DataWireResult
+from datawire.utils import DataWireResult, DataWireCredential
 from datawire.utils.keys import DataWireKey
 from datawire.utils.state import DataWireState, DataWireError
 
@@ -138,6 +138,35 @@ class DWCParser (object):
 
     return factory
 
+  def needs_admin_token(outer_self):
+    def factory(callable):
+      @wraps(callable)
+      def decorated(self, dwc, dwState, args):
+        user_token = None
+        orgID = None
+
+        try:
+          user_token = dwState.currentUserToken()
+        except DataWireError:
+          return DataWireResult.fromError("you must be logged in to use this command")
+
+        try:
+          orgID = dwState.currentOrgID()
+        except DataWireError:
+          return DataWireResult.fromError("you are not logged into a Datawire Connect organization")
+
+        rc = dwc.checkOrgAdmin(user_token, orgID)
+
+        if not rc:
+          # Nope. That ain't good.
+          return DataWireResult.fromError("you are not an administrator in your organization")
+
+        return callable(self, dwc, dwState, args)
+
+      return decorated
+
+    return factory
+
 parser = DWCParser()
 
 def defaultUser():
@@ -231,6 +260,7 @@ def handle_org_create(self, dwc, dwState, args):
 @parser.arg('--no-svc', '--no-reqsvc', '--no-request-services',
             action='store_false', dest='allow_reqsvc', default=True,
             help="Don't allow this user to request services")
+@parser.needs_admin_token()
 def handle_invite_user(self, dwc, dwState, args):
   email = args.email
 
