@@ -12,7 +12,7 @@ import getpass
 from functools import wraps
 
 from datawire.cloud.identity import Identity
-from datawire.utils import DataWireResult, DataWireCredential
+from datawire.utils import DataWireResult
 from datawire.utils.keys import DataWireKey
 from datawire.utils.state import DataWireState, DataWireError
 
