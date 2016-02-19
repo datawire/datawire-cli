@@ -283,44 +283,44 @@ def handle_invite_user(self, dwc, dwState, args):
   if rc:
     print("Success! Send them:")
     print("")
-    print("dwc accept-invitation '%s' '%s' '%s'" % (orgID, rc.invitation, email))
+    print("dwc accept-invitation '%s'" % rc.invitation)
 
   return rc
 
 @parser.command("accept-invitation", "Accept an invitation to an organization")
-@parser.arg('org_id',
-            help="ID of organization")
 @parser.arg('invitation_code',
             help='Invitation code')
-@parser.arg('email',
-            help='Your email address')
 @parser.arg('--name', '--fullname', 
             help='Your full name (will prompt if not given)')
 @parser.arg('--password', '--pw', 
             help='Your password (will prompt if not given)')
 def handle_accept_invitation(self, dwc, dwState, args):
-  orgID = args.org_id
   invitation = args.invitation_code
-  email = args.email
 
   name = args.name
 
   while not name:
-    sys.stdout.write("Name for %s: " % email)
+    sys.stdout.write("Full Name: ")
     sys.stdout.flush()
 
     name = sys.stdin.readline().strip()
 
-  password = getPW("Password for %s: " % email, args.password, verify=True)
+  password = getPW("Password: ", args.password, verify=True)
 
   if not password:
     return DataWireResult.fromError("password is required")
 
-  print("Accepting invitation to %s..." % orgID)
+  print("Accepting invitation...")
 
-  rc = dwc.userAcceptInvitation(orgID, email, invitation, name, password)
+  rc = dwc.userAcceptInvitation(invitation, name, password)
 
   if rc:
+    print("return: %s" % rc.toJSON())
+
+    orgID = rc.orgID
+    email = rc.email
+    token = rc.token
+
     print("Now logged in as [%s]%s" % (orgID, email))
 
     dwState['orgID'] = orgID
@@ -330,7 +330,7 @@ def handle_accept_invitation(self, dwc, dwState, args):
 
     orgInfo = {
       'email': email,
-      'user_token': rc.token,
+      'user_token': token,
       # 'org_name': org_name
     }
 

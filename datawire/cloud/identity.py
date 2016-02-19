@@ -234,22 +234,22 @@ class Identity (object):
 
     return rc
 
-  def userAcceptInvitation(self, orgID, email, invitation, name, password):
-    rc = self.put( target=[ 'v1', 'users', orgID, email ],
+  def userAcceptInvitation(self, invitation, name, password):
+    rc = self.put( target=[ 'v1', 'invitations', invitation ],
                    args={
-                     "invitation": invitation,
                      "name": name,
                      "password": password
                    },
-                   required=[ 'orgID', 'token' ]
+                   required=[ 'orgID', 'email', 'token' ]
                  )
 
     if not rc:
       return rc
 
-    # OK, if here, we have an orgID and a token. Is the token valid?
-    token = rc.token
+    # OK, if here, we have an orgID, an email address, and a token. Is the token valid?
     orgID = rc.orgID
+    email = rc.email
+    token = rc.token
 
     rc = self.checkUser(token, orgID)
 
@@ -259,7 +259,7 @@ class Identity (object):
     # Finally!
     cred = rc.cred
 
-    return DataWireResult(ok=True, token=token, cred=cred, orgID=orgID)
+    return DataWireResult(ok=True, token=token, cred=cred, orgID=orgID, email=email)
 
   def userUpdate(self, orgID, token, email, name=None, password=None):
     rc = self.put( target=[ 'v1', 'users', orgID, email ],

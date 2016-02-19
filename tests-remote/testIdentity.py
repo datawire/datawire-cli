@@ -141,7 +141,7 @@ class TestRegistrationService (object):
     # ...then accept the invitations.
 
     for email, fullName, password, invitation in invitations:
-      rc = self.dwc.userAcceptInvitation(self.orgID, email, invitation, fullName, password)
+      rc = self.dwc.userAcceptInvitation(invitation, fullName, password)
 
       assert rc
 
