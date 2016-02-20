@@ -519,7 +519,9 @@ def handle_service_create(self, dwc, dwState, args):
 
     dwState.save()
 
-  return show_service_token(dwc, dwState, service_handle, format=args.format)
+    return show_service_token(dwc, dwState, service_handle, format=args.format)
+  else:
+    return rc
 
 @parser.command("service-token", "Show a service token")
 @parser.arg("service_handle", help="The handle for the service")
