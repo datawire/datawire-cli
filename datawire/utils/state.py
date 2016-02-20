@@ -13,6 +13,9 @@ class DataWireNoCurrentOrgError (DataWireError):
 class DataWireNoCurrentUserTokenError (DataWireError):
   pass
 
+class DataWireNoSuchServiceError (DataWireError):
+  pass
+
 class DataWireState (object):
   def __init__(self, statePath=None):
     # Make sure we have ~/.datawire...
@@ -131,6 +134,22 @@ class DataWireState (object):
       raise DataWireNoCurrentUserTokenError("no user token for org %s" % orgID)
 
     return org['user_token']
+
+  def currentServiceToken(self, serviceName):
+    org = self.currentOrg()
+
+    if not org:
+      raise DataWireNoCurrentOrgError("no current org")
+
+    if 'service_tokens' not in org:
+      raise DataWireNoSuchServicError("no services in current org")
+
+    service_tokens = org['service_tokens']
+
+    if serviceName not in service_tokens:
+      raise DataWireNoSuchServicError("no such service in current org")
+
+    return service_tokens[serviceName]
 
 # def now8601():
 #     # Yeek.

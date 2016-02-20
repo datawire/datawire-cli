@@ -192,20 +192,31 @@ def getPW(prompt, pw, verify=False):
 
   return pw
 
-def show_service_token(dwc, dwState, service_handle):
-  org = dwState.currentOrg()
+def show_service_token(dwc, dwState, service_handle, format=None, language='Python'):
+  try:
+    service_token = dwState.currentServiceToken(service_handle)
+  except DataWireError as e:
+    return DataWireResult.fromError("no token for service %s: %s" % (service_handle, e.message))
 
-  if 'service_tokens' not in org:
-    return DataWireResult.fromError("You haven't created any services in this org!")
+  matched = False
 
-  service_tokens = org['service_tokens']
+  if language == 'Python':
+    if (format == 'dwc') or (format == 'datawire-connect'):
+      print("from datawire_connect.resolver import DiscoveryProvider as DWCProvider;")
+      print("from discovery.model import Endpoint as DWCEndpoint;")
+      print("from discovery.client import GatewayOptions as DWCOptions;")
+      print("")
+      print("options = DWCOptions('%s')" % service_token)
+      print("")
+      print("provider = DWCProvider(options, '%s', DWCEndpoint(...))" % service_handle)
+      print("provider.register(15.0)")
 
-  if service_handle not in service_tokens:
-    return DataWireResult.fromError("You haven't created the %s service in this org!" % service_handle)
+      matched = True
 
-  print("svc_token = '%s'" % service_tokens[service_handle])
+  if not matched:
+    print("svc_token = '%s'" % service_token)
 
-  return DataWireResult.OK(token=service_tokens[service_handle])
+  return DataWireResult.OK(token=service_token)
 
 @parser.command("create-org", "Create a new organization")
 @parser.arg('org_name',
@@ -481,6 +492,7 @@ def handle_status(self, dwc, dwState, args):
 
 @parser.command("create-service", "Create a new service")
 @parser.arg("service_handle", help="The handle for the new service")
+@parser.arg("--format", help="Formatter (optional; dwc for Datawire Connect example)")
 @parser.needs_user_token()
 def handle_service_create(self, dwc, dwState, args):
   service_handle = args.service_handle
@@ -507,14 +519,16 @@ def handle_service_create(self, dwc, dwState, args):
 
     dwState.save()
 
-  return show_service_token(dwc, dwState, service_handle)
+  return show_service_token(dwc, dwState, service_handle, format=args.format)
 
 @parser.command("service-token", "Show a service token")
 @parser.arg("service_handle", help="The handle for the service")
+@parser.arg("--format", help="Formatter (optional; dwc for Datawire Connect example)")
+@parser.needs_user_token()
 def handle_service_create(self, dwc, dwState, args):
   service_handle = args.service_handle
 
-  return show_service_token(dwc, dwState, service_handle)
+  return show_service_token(dwc, dwState, service_handle, format=args.format)
 
 rc = parser.parse()
 
