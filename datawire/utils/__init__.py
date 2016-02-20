@@ -211,7 +211,7 @@ class DataWireCredential (UnicodeMixin):
     }
 
     if self.expiry is not None:
-      claims['exp'] = self.expiry,
+      claims['exp'] = self.expiry
 
     return claims
 
