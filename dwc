@@ -182,7 +182,7 @@ def getPW(prompt, pw, verify=False):
       pw1 = getpass.getpass(prompt)
 
       if verify:
-        pw2 = getpass.getpass("Again: ")
+        pw2 = getpass.getpass("Confirm password: ")
 
       if not verify or (pw1 == pw2):
         pw = pw1
@@ -236,7 +236,7 @@ def handle_org_create(self, dwc, dwState, args):
 
   # print("org_create %s (%s, %s)" % (org_name, admin_name, admin_email))
 
-  adminpass = getPW("Password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
+  adminpass = getPW("Chose a password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
 
   if not adminpass:
     return DataWireResult.fromError("admin password is required")
@@ -426,7 +426,7 @@ def helpWhenNotLoggedIn():
   print("To accept an invitation to join an organization, use dwc accept-invitation.")
   print("To create a new organization, use dwc create-org.")
 
-@parser.command("status", "Show DataWire status information")
+@parser.command("status", "Show Datawire status information")
 def handle_status(self, dwc, dwState, args):
   if len(dwState) == 0:
     helpWhenNotLoggedIn()
