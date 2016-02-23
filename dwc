@@ -51,12 +51,9 @@ class DWCParser (object):
       for args, kwargs in arg_info:
         cmd_parser.add_argument(*args, **kwargs)
 
-    # --verify forces verification of the signatures on tokens received from Datawire Connect.
-    # It's here primarily for testing within Datawire, so we don't show it in the help.
-
     cmd_parser.add_argument('--verify', '--verify-tokens', '--require-verification', 
                             action='store_true', dest='mustVerify', default=False,
-                            help=argparse.SUPPRESS)
+                            help="Verify signatures of tokens from Datawire Connect")
 
     self.handlers[cmd] = handler
 
@@ -130,7 +127,7 @@ class DWCParser (object):
 
     return factory
 
-  def needs_user_token(outer_self, needs_service_creation=False):
+  def needs_user_token(outer_self):
     def factory(callable):
       @wraps(callable)
       def decorated(self, dwc, dwState, args):
@@ -138,18 +135,6 @@ class DWCParser (object):
           user_token = dwState.currentUserToken()
         except DataWireError:
           return DataWireResult.fromError("you must be logged in to use this command")
-
-        if needs_service_creation:
-          try:
-            orgID = dwState.currentOrgID()
-          except DataWireError:
-            return DataWireResult.fromError("you are not logged into a Datawire Connect organization")
-
-          rc = dwc.checkCanRequestServices(user_token, orgID)
-
-          if not rc:
-            # Nope. That ain't good.
-            return DataWireResult.fromError("you are not able to request services")
 
         return callable(self, dwc, dwState, args)
 
@@ -242,9 +227,8 @@ def show_service_token(dwc, dwState, service_handle, format=None, language='Pyth
             help='Email address of organization administrator')
 @parser.arg('--adminpass', '--password', '--pw', 
             help='Password of organization administrator (will prompt if not given)')
-# --test marks an organization as being for internal Datawire testing, so it's hidden.
 @parser.arg('--test', action='store_true', dest='isATest', default=False,
-            help=argparse.SUPPRESS)
+            help='Mark organization as a test org')
 def handle_org_create(self, dwc, dwState, args):
   org_name = args.org_name
   admin_name = args.admin_name
@@ -252,7 +236,7 @@ def handle_org_create(self, dwc, dwState, args):
 
   # print("org_create %s (%s, %s)" % (org_name, admin_name, admin_email))
 
-  adminpass = getPW("Choose a password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
+  adminpass = getPW("Chose a password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
 
   if not adminpass:
     return DataWireResult.fromError("admin password is required")
@@ -288,7 +272,7 @@ def handle_org_create(self, dwc, dwState, args):
 @parser.arg('--non-admin', '--no-admin', '--mortal',
             action='store_true', dest='mortal', default=False,
             help="Create a non-admin user")
-@parser.arg('--cant-request-services', '--no-svc', '--no-svc',
+@parser.arg('--no-svc', '--no-reqsvc', '--no-request-services',
             action='store_false', dest='allow_reqsvc', default=True,
             help="Don't allow this user to request services")
 @parser.needs_admin_token()
@@ -336,7 +320,7 @@ def handle_accept_invitation(self, dwc, dwState, args):
 
     name = sys.stdin.readline().strip()
 
-  password = getPW("Choose a password: ", args.password, verify=True)
+  password = getPW("Password: ", args.password, verify=True)
 
   if not password:
     return DataWireResult.fromError("password is required")
@@ -481,16 +465,12 @@ def handle_status(self, dwc, dwState, args):
   print("Capabilities:")
 
   for scope in scopes:
-    # Don't bother showing the user scope -- we already know that we're a user!
-    if scope == 'dw:user0': 
-      continue
-
     prettyName = DataWireCredential.prettyScopeName(scope)
 
-    if not prettyName:
-      prettyName = scope
+    if prettyName:
+      prettyStr = ": %s" % prettyName
 
-    print("- %s" % prettyName)
+    print("- %s%s" % (scope, prettyStr))
 
   someServices = False
 
@@ -513,7 +493,7 @@ def handle_status(self, dwc, dwState, args):
 @parser.command("create-service", "Create a new service")
 @parser.arg("service_handle", help="The handle for the new service")
 @parser.arg("--format", help="Formatter (optional; dwc for Datawire Connect example)")
-@parser.needs_user_token(needs_service_creation=True)
+@parser.needs_user_token()
 def handle_service_create(self, dwc, dwState, args):
   service_handle = args.service_handle
 
