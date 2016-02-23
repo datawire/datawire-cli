@@ -276,7 +276,7 @@ def handle_org_create(self, dwc, dwState, args):
 @parser.arg('--non-admin', '--no-admin', '--mortal',
             action='store_true', dest='mortal', default=False,
             help="Create a non-admin user")
-@parser.arg('--no-svc', '--no-reqsvc', '--no-request-services',
+@parser.arg('--cant-request-services', '--no-svc', '--no-svc',
             action='store_false', dest='allow_reqsvc', default=True,
             help="Don't allow this user to request services")
 @parser.needs_admin_token()
