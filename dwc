@@ -51,9 +51,12 @@ class DWCParser (object):
       for args, kwargs in arg_info:
         cmd_parser.add_argument(*args, **kwargs)
 
+    # --verify forces verification of the signatures on tokens received from Datawire Connect.
+    # It's here primarily for testing within Datawire, so we don't show it in the help.
+
     cmd_parser.add_argument('--verify', '--verify-tokens', '--require-verification', 
                             action='store_true', dest='mustVerify', default=False,
-                            help="Verify signatures of tokens from Datawire Connect")
+                            help=argparse.SUPPRESS)
 
     self.handlers[cmd] = handler
 
@@ -227,8 +230,9 @@ def show_service_token(dwc, dwState, service_handle, format=None, language='Pyth
             help='Email address of organization administrator')
 @parser.arg('--adminpass', '--password', '--pw', 
             help='Password of organization administrator (will prompt if not given)')
+# --test marks an organization as being for internal Datawire testing, so it's hidden.
 @parser.arg('--test', action='store_true', dest='isATest', default=False,
-            help='Mark organization as a test org')
+            help=argparse.SUPPRESS)
 def handle_org_create(self, dwc, dwState, args):
   org_name = args.org_name
   admin_name = args.admin_name
