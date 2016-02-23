@@ -240,7 +240,7 @@ def handle_org_create(self, dwc, dwState, args):
 
   # print("org_create %s (%s, %s)" % (org_name, admin_name, admin_email))
 
-  adminpass = getPW("Chose a password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
+  adminpass = getPW("Choose a password for %s @ %s: " % (admin_email, org_name), args.adminpass, verify=True)
 
   if not adminpass:
     return DataWireResult.fromError("admin password is required")
@@ -324,7 +324,7 @@ def handle_accept_invitation(self, dwc, dwState, args):
 
     name = sys.stdin.readline().strip()
 
-  password = getPW("Password: ", args.password, verify=True)
+  password = getPW("Choose a password: ", args.password, verify=True)
 
   if not password:
     return DataWireResult.fromError("password is required")
