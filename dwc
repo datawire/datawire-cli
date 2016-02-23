@@ -469,12 +469,16 @@ def handle_status(self, dwc, dwState, args):
   print("Capabilities:")
 
   for scope in scopes:
+    # Don't bother showing the user scope -- we already know that we're a user!
+    if scope == 'dw:user0': 
+      continue
+
     prettyName = DataWireCredential.prettyScopeName(scope)
 
-    if prettyName:
-      prettyStr = ": %s" % prettyName
+    if not prettyName:
+      prettyName = scope
 
-    print("- %s%s" % (scope, prettyStr))
+    print("- %s" % prettyName)
 
   someServices = False
 
