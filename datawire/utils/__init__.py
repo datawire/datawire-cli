@@ -146,7 +146,7 @@ class DataWireCredential (UnicodeMixin):
   """
 
   prettyScopeNames = {
-    'dw:admin0': 'Organization administator',
+    'dw:admin0': 'Organization administrator',
     'dw:organization0': 'Organization',
     'dw:reqSvc0': 'Able to request service tokens',
     'dw:service0': 'Service',
