@@ -130,7 +130,7 @@ class DWCParser (object):
 
     return factory
 
-  def needs_user_token(outer_self):
+  def needs_user_token(outer_self, needs_service_creation=False):
     def factory(callable):
       @wraps(callable)
       def decorated(self, dwc, dwState, args):
@@ -138,6 +138,18 @@ class DWCParser (object):
           user_token = dwState.currentUserToken()
         except DataWireError:
           return DataWireResult.fromError("you must be logged in to use this command")
+
+        if needs_service_creation:
+          try:
+            orgID = dwState.currentOrgID()
+          except DataWireError:
+            return DataWireResult.fromError("you are not logged into a Datawire Connect organization")
+
+          rc = dwc.checkCanRequestServices(user_token, orgID)
+
+          if not rc:
+            # Nope. That ain't good.
+            return DataWireResult.fromError("you are not able to request services")
 
         return callable(self, dwc, dwState, args)
 
@@ -501,7 +513,7 @@ def handle_status(self, dwc, dwState, args):
 @parser.command("create-service", "Create a new service")
 @parser.arg("service_handle", help="The handle for the new service")
 @parser.arg("--format", help="Formatter (optional; dwc for Datawire Connect example)")
-@parser.needs_user_token()
+@parser.needs_user_token(needs_service_creation=True)
 def handle_service_create(self, dwc, dwState, args):
   service_handle = args.service_handle
 
