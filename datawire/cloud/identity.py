@@ -165,6 +165,11 @@ class Identity (object):
                            [ 'dw:organization0', 'dw:service0' ]      # must not have these
                           )
 
+  def checkCanRequestServices(self, token, orgID):
+    return self.checkToken(token, orgID, 
+                           [ 'dw:reqSvc0' ],                          # must have these
+                           []                                         # must not have these
+                          )
   def checkUser(self, token, orgID):
     return self.checkToken(token, orgID, 
                            [ 'dw:user0' ],                            # must have these
