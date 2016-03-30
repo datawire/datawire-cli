@@ -49,5 +49,13 @@ class TestQuarkDWState (object):
     for svc in qSvcs:
       assert(qState.getCurrentServiceToken(svc) == pState.currentServiceToken(svc))
 
-    print("-- we are [%s]%s" % (qState.getCurrentOrgID(), qState.getCurrentEmail()))
-    print("-- animated: %s" % qState.getCurrentServiceToken('animated'))
+if __name__ == '__main__':
+    qState = qDWState()
+    qState.loadDefaultState()
+
+    print("%s" % qState.defaultStatePath()) 
+    print("%s" % qState.getCurrentOrgID())
+    print("%s" % qState.getCurrentEmail())
+
+    for svc in qState.getCurrentServices():
+        print("%s:::%s" % (svc, qState.getCurrentServiceToken(svc)))
