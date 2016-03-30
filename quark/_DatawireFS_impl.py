@@ -4,9 +4,9 @@ import os
 
 import quark
 
-__all__ = """DatawireFS""".split(' ')
+__all__ = """_DatawireFS""".split(' ')
 
-class DatawireFS (object):
+class _DatawireFS (object):
     @classmethod
     def userHomeDir(klass):
         return os.path.expanduser('~')

@@ -1,8 +1,8 @@
 package DatawireState 1.0.0;
 
-include DatawireFS_impl.py;
-include DatawireFS_impl.js;
-include io/datawire/quark/DatawireFS_impl.java;
+include _DatawireFS_impl.py;
+include _DatawireFS_impl.js;
+include io/datawire/quark/_DatawireFS_impl.java;
 
 // WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
 //
@@ -11,16 +11,16 @@ include io/datawire/quark/DatawireFS_impl.java;
 //
 // WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
 
-namespace DatawireFS {
+namespace _DatawireFS {
     macro String dwFS_userHomeDir()
-        $py{__import__('DatawireFS_impl').DatawireFS.userHomeDir()}
-        $js{require('DatawireState/DatawireFS_impl.js').userHomeDir()}
-        $java{io.datawire.quark.runtime.DatawireFS_impl.userHomeDir()};
+        $py{__import__('_DatawireFS_impl')._DatawireFS.userHomeDir()}
+        $js{require('DatawireState/_DatawireFS_impl.js').userHomeDir()}
+        $java{io.datawire.quark.runtime._DatawireFS_impl.userHomeDir()};
 
     macro String dwFS_fileContents(String path)
-        $py{__import__('DatawireFS_impl').DatawireFS.fileContents($path)}
-        $js{require('DatawireState/DatawireFS_impl.js').fileContents($path)}
-        $java{io.datawire.quark.runtime.DatawireFS_impl.fileContents($path)};
+        $py{__import__('_DatawireFS_impl')._DatawireFS.fileContents($path)}
+        $js{require('DatawireState/_DatawireFS_impl.js').fileContents($path)}
+        $java{io.datawire.quark.runtime._DatawireFS_impl.fileContents($path)};
 
     class FS {
         static String userHomeDir() {
@@ -179,11 +179,11 @@ namespace DatawireState {
         }
 
         String stateContents(String path) {
-            return DatawireFS.FS.fileContents(path);
+            return _DatawireFS.FS.fileContents(path);
         }
 
         String defaultStatePath() {
-            return DatawireFS.FS.userHomeDir() + "/.datawire/datawire.json";
+            return _DatawireFS.FS.userHomeDir() + "/.datawire/datawire.json";
         }
 
         String defaultStateContents() {

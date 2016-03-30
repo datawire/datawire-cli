@@ -6,7 +6,7 @@ import quark.concurrent.Context;
 import java.io.File;
 import java.io.FileInputStream;
 
-public class DatawireFS_impl {
+public class _DatawireFS_impl {
     public static String userHomeDir() {
         return System.getProperty("user.home");
     }
@@ -26,13 +26,13 @@ public class DatawireFS_impl {
             str = new String(data, "UTF-8");
         }
         catch (java.io.FileNotFoundException ex) {
-            runtime.fail("DatawireFS.fileContents file not found: " + ex.getMessage());
+            runtime.fail("_DatawireFS.fileContents file not found: " + ex.getMessage());
         }
         catch (java.io.UnsupportedEncodingException ex) {
-            runtime.fail("DatawireFS.fileContents unsupported encoding: " + ex.getMessage());
+            runtime.fail("_DatawireFS.fileContents unsupported encoding: " + ex.getMessage());
         }
         catch (java.io.IOException ex) {
-            runtime.fail("DatawireFS.fileContents I/O error: " + ex.getMessage());
+            runtime.fail("_DatawireFS.fileContents I/O error: " + ex.getMessage());
         }
 
         return str;
