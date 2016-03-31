@@ -35,8 +35,7 @@ class TestQuarkDWState (object):
   def test_loadState(self):
     pState = pDWState()
 
-    qState = qDWState()
-    qState.loadDefaultState()
+    qState = qDWState.defaultState()
 
     assert(qState.getCurrentOrgID() == pState.currentOrgID())
     assert(qState.getCurrentEmail() == pState.currentOrg()['email'])
@@ -50,8 +49,7 @@ class TestQuarkDWState (object):
       assert(qState.getCurrentServiceToken(svc) == pState.currentServiceToken(svc))
 
 if __name__ == '__main__':
-    qState = qDWState()
-    qState.loadDefaultState()
+    qState = qDWState.defaultState()
 
     print("%s" % qState.defaultStatePath()) 
     print("%s" % qState.getCurrentOrgID())

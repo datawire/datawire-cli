@@ -36,11 +36,11 @@ class TestDWState {
 			services.add(svcHandle)
 		}
 
-        val dwState = DatawireState();
+        var dwState = DatawireState();
 
 		assertEquals(dwState.defaultStatePath(), goldDefaultPath);
 
-        dwState.loadDefaultState();
+        dwState = DatawireState.defaultState();
 
 		assertEquals(dwState.getCurrentOrgID(), goldOrgID);
 		assertEquals(dwState.getCurrentEmail(), goldEmail);

@@ -34,7 +34,7 @@ var dwState = new DatawireState();
 
 assert.equal(dwState.defaultStatePath(), goldDefaultPath);
 
-dwState.loadDefaultState();
+dwState = DatawireState.defaultState();
 
 assert.equal(dwState.getCurrentOrgID(), goldOrgID);
 assert.equal(dwState.getCurrentEmail(), goldEmail);
