@@ -9,8 +9,8 @@ setup(
     scripts = [ 'dwc' ],
 
     install_requires = [ 
-        'requests>=2.9.1',
-        'python-jose>=0.5.5'
+        'requests==2.9.1',
+        'python-jose==0.5.5'
     ],
 
     package_data = {
