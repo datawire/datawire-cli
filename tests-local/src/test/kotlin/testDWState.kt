@@ -22,8 +22,8 @@ class TestDWState {
 
 		println("goldDefaultPath " + goldDefaultPath)
 
-		val tokens: MutableMap<String, String> = hashMapOf()
-		val services: MutableList<String> = mutableListOf()
+		val goldTokens: MutableMap<String, String> = hashMapOf()
+		val services: MutableSet<String> = mutableSetOf()
 
 		// Yeah, I know, this isn't terribly Kotlinesque. Cope. [ :) ]
 		goldInfo.takeLast(goldInfo.size - i).forEach {
@@ -32,7 +32,7 @@ class TestDWState {
 			val svcHandle = fields[0]
 			val svcToken = fields[1]
 
-			tokens[svcHandle] = svcToken
+			goldTokens[svcHandle] = svcToken
 			services.add(svcHandle)
 		}
 
@@ -45,6 +45,17 @@ class TestDWState {
 		assertEquals(dwState.getCurrentOrgID(), goldOrgID);
 		assertEquals(dwState.getCurrentEmail(), goldEmail);
 
-		assertEquals(true, true)
+		val goodTokens: Set<String> = 
+			services.fold(setOf(), 
+				          { acc, it -> 
+				          	if (goldTokens[it] == dwState.getCurrentServiceToken(it)) 
+				          	    acc + it
+				          	else
+				          	    acc })
+
+		val dwStateServices: Set<String> = dwState.getCurrentServices().toSet()
+
+		assertEquals(goodTokens, services)
+		assertEquals(goodTokens, dwStateServices)
 	}
 }
