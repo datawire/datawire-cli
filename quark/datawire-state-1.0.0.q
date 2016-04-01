@@ -56,24 +56,6 @@ namespace DatawireState {
         String _currentOrgID;
         JSONObject _currentOrg;
 
-        @doc("DatawireState.defaultState() is the normal entry point.")
-        static DatawireState defaultState() {
-            DatawireState dwState = new DatawireState();
-
-            dwState.loadDefaultState();
-
-            return dwState;
-        }
-
-        @doc("DatawireState.customState() is the normal entry point if you're using a custom state file")
-        static DatawireState customState(String path) {
-            DatawireState dwState = new DatawireState();
-
-            dwState.load(path);
-
-            return dwState;
-        }
-
         DatawireState() {
             self._initialized = false;
             self.runtime = concurrent.Context.runtime();
