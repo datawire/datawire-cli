@@ -6,14 +6,14 @@
 
     var quark = require('quark').quark;
 
-    var _DatawireFS = (function () {
-        function _DatawireFS() {}
+    var DatawireFS = (function () {
+        function DatawireFS() {}
 
-        _DatawireFS.userHomeDir = function () {
+        DatawireFS.userHomeDir = function () {
             return os.homedir();
         };
 
-        _DatawireFS.fileContents = function (path) {
+        DatawireFS.fileContents = function (path) {
             try {
                 return fs.readFileSync(path, 'utf-8');
             }
@@ -23,8 +23,8 @@
             }
         };
 
-        return _DatawireFS;
+        return DatawireFS;
     })();
 
-    module.exports = _DatawireFS;
+    module.exports = DatawireFS;
 })();
