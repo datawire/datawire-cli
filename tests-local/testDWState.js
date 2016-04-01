@@ -45,6 +45,8 @@ for (var i = 0; i < services.length; i++) {
 	var svcHandle = services[i];
 	var svcToken = dwState.getCurrentServiceToken(svcHandle);
 
+	if (goldTokens[svcHandle])
+
 	assert.equal(svcToken, goldTokens[svcHandle]);
 	delSvc.push(svcHandle);
 }
