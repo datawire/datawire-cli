@@ -12,9 +12,6 @@ class DataWireRandom (object):
   def __init__(self):
     self.random = stdRandom.SystemRandom()
 
-  def prettyJSON(self, obj):
-    return json.dumps(obj, indent=4, separators=(',',':'), sort_keys=True)
-
   def randomBits(self, numBits):
     """
     Returns a integer containing numBits random bits.
