@@ -3,16 +3,13 @@
 import sys
 
 import argparse
+import datetime
 import getpass
-
-# import json
-# import time
-# import requests
 
 from functools import wraps
 
 from datawire.cloud.identity import Identity
-from datawire.utils import DataWireResult, DataWireCredential
+from datawire.utils import prettyJSON, DataWireResult, DataWireCredential
 from datawire.utils.keys import DataWireKey
 from datawire.utils.state import DataWireState, DataWireError
 
@@ -207,16 +204,183 @@ def getPW(prompt, pw, verify=False):
 
   return pw
 
-def show_service_token(dwc, dwState, service_handle, format=None, language='Python'):
+class PrettyCredential (object):
+  # This will likely move into utils...
+  def __init__(self, cred):
+    self.cred = cred
+    self.claims = cred.getClaims()
+
+    self._errors = []
+    self._info = []
+    self.role = 'unknown!'
+
+    self.parseScopes()
+
+    self.formatIssuer()
+    self.formatRole()
+    self.formatIDInfo()
+    self.formatTimes()
+
+  def info(self, line):
+    self._info.append(line)
+
+  def error(self, line):
+    self._errors.append(line)
+
+  def extract(self, key):
+    if key in self.claims:
+      claim = self.claims[key]
+      del(self.claims[key])
+
+      return claim
+    else:
+      return None
+
+  def parseScopes(self):
+    self.scopes = self.extract('scopes')
+
+    if not self.scopes:
+      self.error('missing scopes')
+    else:
+      if 'dw:service0' in self.scopes:
+        self.role = 'service'
+      elif 'dw:user0' in self.scopes:
+        self.role = 'user'
+
+        if 'dw:admin0' in self.scopes:
+          self.role += '; org admin'
+
+        if 'dw:reqSvc0' in self.scopes:
+          self.role += '; can request services'
+      elif 'dw:organization0' in self.scopes:
+        self.role = 'organization'
+
+  def formatIssuer(self):
+    dwType = self.extract('dwType')
+    issuer = self.extract('iss')
+
+    valid = True
+
+    if not dwType:
+      valid = False
+      self.error("missing dwType")
+
+    if not issuer:
+      valid = False
+      self.error("missing issuer")
+
+    if valid:
+      self.info('%s from %s' % (dwType, issuer))
+
+      if dwType != 'DataWireCredential':
+        self.error("%s: not a valid credential!" % dwType)
+
+  def formatIDInfo(self):
+    orgID = self.extract('aud')
+    email = self.extract('email')
+    ownerEmail = self.extract('ownerEmail')
+    tokenID = self.extract('sub')
+
+    self.info('orgID: %s' % orgID)
+
+    if self.role == 'service':
+      self.info('service handle: %s' % tokenID)
+    elif self.role.startswith('user'):
+      self.info('user: %s' % email)
+    else:
+      self.info('email: %s' % email)
+      self.info('subscriber: %s' % tokenID)
+
+    self.info('created by: %s' % ownerEmail)
+
+  def formatRole(self):
+    self.info("role: %s" % self.role)
+
+  def isoTime(self, sse):
+    dt = datetime.datetime.fromtimestamp(sse)
+    return dt.isoformat()
+
+  def relativeTime(self, dtnow, sse):
+    dt = datetime.datetime.fromtimestamp(sse)
+
+    delta = dt - dtnow
+    modifier = "in the future"
+
+    if dt <= dtnow:
+      delta = dtnow - dt
+      modifier = "ago"
+
+    return "%s %s" % (delta, modifier)
+
+  def formatTimes(self):
+    iat = self.extract('iat')
+    nbf = self.extract('nbf')
+    exp = self.extract('exp')
+
+    dtnow = datetime.datetime.now()
+
+    if iat:
+      self.info("issued      %s (%s)" % 
+                (self.isoTime(iat), self.relativeTime(dtnow, iat)))
+
+    if nbf:
+      self.info("valid as of %s (%s)" % 
+                (self.isoTime(nbf), self.relativeTime(dtnow, nbf)))
+
+    if exp:
+      self.info("expires     %s (%s)" % 
+                (self.isoTime(exp), self.relativeTime(dtnow, exp)))
+    else:
+      self.info("never expires")
+
+  def __str__(self):
+    s = ""
+
+    if self._errors:
+      s += "\n".join(["! " + err for err in self._errors])
+
+    s += "\n".join(self._info)
+
+    return s
+
+def show_detailed_token(dwc, dwState, token):
+  rc = dwc.credentialFromToken(token, dwState.currentOrgID())
+
+  if not rc:
+    return rc
+
+  cred = rc.cred
+  pretty = PrettyCredential(cred)
+
+  print("%s" % pretty)
+
+  return DataWireResult.OK(token=token)
+
+def show_service_token(dwc, dwState, service_handle, format='simple',
+                       language='Python', show_claims=False):
   try:
     service_token = dwState.currentServiceToken(service_handle)
   except DataWireError as e:
-    return DataWireResult.fromError("no token for service %s: %s" % (service_handle, e.message))
+    return DataWireResult.fromError("no token for service %s: %s" %
+                                    (service_handle, e.message))
 
   matched = False
 
-  if language == 'Python':
-    if (format == 'dwc') or (format == 'datawire-connect'):
+  if show_claims:
+    # This overrides any other choices. Show the details of the token.
+    rc = show_detailed_token(dwc, dwState, service_token)
+
+    if not rc:
+      print("service %s does not have a valid token: %s" % 
+            (service_handle, rc.error))
+
+    matched = True
+
+  elif format == 'simple':
+    print("%s" % service_token)
+
+  elif (format == 'dwc') or (format == 'datawire-connect'):
+    if language == 'Python':
       print("from datawire_connect.resolver import DiscoveryProvider as DWCProvider;")
       print("from discovery.model import Endpoint as DWCEndpoint;")
       print("from discovery.client import GatewayOptions as DWCOptions;")
@@ -227,11 +391,29 @@ def show_service_token(dwc, dwState, service_handle, format=None, language='Pyth
       print("provider.register(15.0)")
 
       matched = True
+    else:
+      print("Oops, no support for %s yet" % language)
 
   if not matched:
     print("svc_token = '%s'" % service_token)
 
   return DataWireResult.OK(token=service_token)
+
+def show_user_token(dwc, dwState, show_claims=False):
+  try:
+    user_token = dwState.currentUserToken()
+  except DataWireError as e:
+    return DataWireResult.fromError("no user token??! %s" % e.message)
+
+  if show_claims:
+    # This overrides any other choices. Show the details of the token.
+    if not show_detailed_token(dwc, dwState, user_token):
+      print("service %s does not have a valid token: %s" % 
+            (service_handle, rc.error))
+  else:
+    print("%s" % user_token)
+
+  return DataWireResult.OK(token=user_token)
 
 @parser.command("create-org", "Create a new organization")
 @parser.arg('org_name',
@@ -546,11 +728,22 @@ def handle_service_create(self, dwc, dwState, args):
 @parser.command("service-token", "Show a service token")
 @parser.arg("service_handle", help="The handle for the service")
 @parser.arg("--format", help="Formatter (optional; dwc for Datawire Connect example)")
+@parser.arg("--claims",
+            action="store_true", dest="show_claims",
+            help="Show detailed claims [optional]")
 @parser.needs_user_token()
 def handle_service_create(self, dwc, dwState, args):
   service_handle = args.service_handle
 
-  return show_service_token(dwc, dwState, service_handle, format=args.format)
+  return show_service_token(dwc, dwState, service_handle, format=args.format, show_claims=args.show_claims)
+
+@parser.command("user-token", "Show your user token")
+@parser.arg("--claims",
+            action="store_true", dest="show_claims",
+            help="Show detailed claims [optional]")
+@parser.needs_user_token()
+def handle_service_create(self, dwc, dwState, args):
+  return show_user_token(dwc, dwState, show_claims=args.show_claims)
 
 rc = parser.parse()
 

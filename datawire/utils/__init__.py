@@ -19,6 +19,9 @@ class UnicodeMixin (object):
   else:
     __str__ = lambda x: unicode(x).encode('utf-8')
 
+def prettyJSON(obj):
+  return json.dumps(obj, indent=4, separators=(',',':'), sort_keys=True)
+
 # We use DataWireResult in many places, so it gets to be in the toplevel datawire.utils package.
 
 class DataWireResult (UnicodeMixin):
