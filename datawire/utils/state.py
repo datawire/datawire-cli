@@ -142,12 +142,12 @@ class DataWireState (object):
       raise DataWireNoCurrentOrgError("no current org")
 
     if 'service_tokens' not in org:
-      raise DataWireNoSuchServicError("no services in current org")
+      raise DataWireNoSuchServiceError("no services in current org")
 
     service_tokens = org['service_tokens']
 
     if serviceName not in service_tokens:
-      raise DataWireNoSuchServicError("no such service in current org")
+      raise DataWireNoSuchServiceError("no such service in current org")
 
     return service_tokens[serviceName]
 
