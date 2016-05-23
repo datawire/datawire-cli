@@ -59,6 +59,6 @@ git checkout -- VERSION
 set -x 
 
 git checkout test-master
-git merge --ff-only --commit --stat origin/test-develop
+git merge --ff-only --commit --stat origin/develop
 git push origin
 
