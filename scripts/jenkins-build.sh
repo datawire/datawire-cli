@@ -56,7 +56,9 @@ step "Merging into master"
 
 git checkout -- VERSION
 
+set -x 
+
 git checkout test-master
-git merge --ff-only --commit --stat test-develop
+git merge --ff-only --commit --stat origin/test-develop
 git push origin
 
