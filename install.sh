@@ -222,20 +222,31 @@ is_already_installed () {
     fi
 }
 ####======== module install-python ========
-#### Module to install Python files
 do_installation () {
     source="${1}"
     target="${2}"
+    support_existing_venv="${3}"
 
-    step "Creating installation directory..."
+    if [ -n "${support_existing_venv}" -a \( "${target}" = "venv" \) ]; then
+        if [ -z "${VIRTUAL_ENV}" ]; then
+            echo "Target 'venv' only makes sense in a virtualenv" >&2
+            exit 1
+        fi
 
-    if [ ! -d "${install_destination}" ]; then
-        mkdir -p "${install_destination}"
+        # RE-activate the existing venv. I'm not sure why my setup clobbers
+        # the venv's PATH setting, but it does...
+        . ${VIRTUAL_ENV}/bin/activate
+    else
+        step "Creating installation directory..."
+
+        if [ ! -d "${install_destination}" ]; then
+            mkdir -p "${install_destination}"
+        fi
+
+        virtualenv -q --python python2.7 "${install_destination}/venv"
+
+        . ${install_destination}/venv/bin/activate
     fi
-
-    virtualenv -q --python python2.7 "${install_destination}/venv"
-
-    . ${install_destination}/venv/bin/activate
 
     step "Installing..."
 
@@ -249,7 +260,9 @@ do_installation () {
 
     run_script pkgconf.sh "${source}" "${target}" "postinstall"
 
-    deactivate
+    if [ -z "${support_existing_venv}" -o \( "${target}" != "venv" \) ]; then
+        deactivate
+    fi
 
     step "Installed!"
 }
@@ -312,68 +325,75 @@ is_importable "datawire.cloud"
 is_on_path "dwc"
 
 download
-do_installation "${workdir}" "${install_destination}"
 
-mkdir ${install_destination}/bin
-mv ${install_destination}/venv/bin/dwc ${install_destination}/bin
+do_installation "${workdir}" "${install_destination}" venv_ok
 
-conf="${install_destination}/config.sh"
-
-cat > ${conf} <<EOF
-export PATH=\${PATH}:${install_destination}/bin
-EOF
-
-msg
-msg "  The Datawire CLI has been installed into"
-msg 
-msg "    ${install_destination}/bin/dwc"
-msg
-
-already_there=
-
-if [ -f ~/.bashrc ] && fgrep -q ${conf} ~/.bashrc; then
-	already_there=yes
-fi
-
-if [ -n "${already_there}" ]; then
-	msg "  Your .bashrc should already be correctly setting your \$PATH,"
-	msg "  because it already includes"
+if [ "${install_destination}" = "venv" ]; then
 	msg
-	msg "    . ${conf}"
+	msg "  The Datawire CLI has been installed into your current virtualenv."
 	msg
 else
-	msg "  You may want to add '${install_destination}/bin' to your PATH."
-	msg "  You can do this by adding"
+	mkdir ${install_destination}/bin
+	mv ${install_destination}/venv/bin/dwc ${install_destination}/bin
+
+	conf="${install_destination}/config.sh"
+
+	cat > ${conf} <<-EOF
+	export PATH=\${PATH}:${install_destination}/bin
+	EOF
+
 	msg
-	msg "    . ${conf}"
+	msg "  The Datawire CLI has been installed into"
+	msg 
+	msg "    ${install_destination}/bin/dwc"
 	msg
-	msg "  to your .bashrc."
-	msg
 
-	if [ \( $VERBOSITY -gt 0 \) -a \( -r /dev/tty \) ]; then
-		msg "We can do that for you if you'd like."
+	already_there=
 
-	    # The || true here is a workaround for osx, apparently when you are
-	    # piping to a shell, read will just fail
-	    read -p "-->   Type YES to modify ~/.bashrc: " answer < /dev/tty || true
+	if [ -f ~/.bashrc ] && fgrep -q ${conf} ~/.bashrc; then
+		already_there=yes
+	fi
 
-	    if [ -n "${answer}" ] && [ ${answer} == "YES" ]; then
-	        substep "Modifying .bashrc: "
+	if [ -n "${already_there}" ]; then
+		msg "  Your .bashrc should already be correctly setting your \$PATH,"
+		msg "  because it already includes"
+		msg
+		msg "    . ${conf}"
+		msg
+	else
+		msg "  You may want to add '${install_destination}/bin' to your PATH."
+		msg "  You can do this by adding"
+		msg
+		msg "    . ${conf}"
+		msg
+		msg "  to your .bashrc."
+		msg
 
-	        if [ -f ~/.bashrc ] && fgrep -q ${conf} ~/.bashrc; then
-		    	substep_skip "(already modified)"
-	        else
-	            cat >> ~/.bashrc <<-EOF
+		if [ \( $VERBOSITY -gt 0 \) -a \( -r /dev/tty \) ]; then
+			msg "We can do that for you if you'd like."
 
-				# Add dwc to the path
-				. ${conf}
-EOF
-		    	substep_ok
-	        fi
-	        step "Configured!"
-	    else
-	        step "Opted out!"
-	    fi
+		    # The || true here is a workaround for osx, apparently when you are
+		    # piping to a shell, read will just fail
+		    read -p "-->   Type YES to modify ~/.bashrc: " answer < /dev/tty || true
+
+		    if [ -n "${answer}" ] && [ ${answer} == "YES" ]; then
+		        substep "Modifying .bashrc: "
+
+		        if [ -f ~/.bashrc ] && fgrep -q ${conf} ~/.bashrc; then
+			    	substep_skip "(already modified)"
+		        else
+		            cat >> ~/.bashrc <<-EOF
+
+					# Add dwc to the path
+					. ${conf}
+	EOF
+			    	substep_ok
+		        fi
+		        step "Configured!"
+		    else
+		        step "Opted out!"
+		    fi
+		fi
 	fi
 fi
 
