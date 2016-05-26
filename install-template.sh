@@ -21,6 +21,10 @@ if [ "${install_destination}" = "venv" ]; then
 	msg
 	msg "  The Datawire CLI has been installed into your current virtualenv."
 	msg
+elif [ "${install_destination}" = "system" ]; then
+	msg
+	msg "  The Datawire CLI has been installed using your system installation."
+	msg
 else
 	mkdir ${install_destination}/bin
 	mv ${install_destination}/venv/bin/dwc ${install_destination}/bin
