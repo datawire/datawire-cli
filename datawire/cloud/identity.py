@@ -239,6 +239,35 @@ class Identity (object):
 
     return rc
 
+  # userAcceptInvitation, userAuth, and userUpdate all return exactly the same thing.
+  # self.userCommonResult() is the way we manage that.
+  def userCommonResult(self, rc):
+    # If this is a failure, short-circuit.
+    if not rc:
+      return rc
+
+    # Every common-result function hands back an rc with an orgID, email, token, and metadata.
+    # Break 'em out...
+
+    orgID = rc.orgID
+    email = rc.email
+    token = rc.token
+    meta = rc.meta
+
+    # Next up, make sure the token belongs to this org, and is a valid user token. 
+    #
+    # NOTE WELL: we overwrite rc here. The new rc has a credential instead of the token.
+    rc = self.checkUser(token, orgID)
+
+    if not rc:
+      # Oops.
+      return rc
+
+    # Finally!
+    cred = rc.cred
+
+    return DataWireResult(ok=True, orgID=orgID, email=email, meta=meta, token=token, cred=cred)
+
   def userAcceptInvitation(self, invitation, name, password):
     rc = self.put( target=[ 'v1', 'invitations', invitation ],
                    args={
@@ -248,50 +277,24 @@ class Identity (object):
                    required=[ 'orgID', 'email', 'token' ]
                  )
 
-    if not rc:
-      return rc
+    return self.userCommonResult(rc)
 
-    # OK, if here, we have an orgID, an email address, and a token. Is the token valid?
-    orgID = rc.orgID
-    email = rc.email
-    token = rc.token
+  def userUpdate(self, orgID, token, email, name=None, password=None, meta=None):
+    args = {
+      "name": name,
+      "password": password
+    }
 
-    rc = self.checkUser(token, orgID)
+    if meta:
+      args['meta'] = meta
 
-    if not rc:
-      return rc
-
-    # Finally!
-    cred = rc.cred
-
-    return DataWireResult(ok=True, token=token, cred=cred, orgID=orgID, email=email)
-
-  def userUpdate(self, orgID, token, email, name=None, password=None):
     rc = self.put( target=[ 'v1', 'users', orgID, email ],
                    token=token,
-                   args={
-                     "name": name,
-                     "password": password
-                   },
+                   args=args,
                    required=[ 'orgID', 'token' ]
                  )
 
-    if not rc:
-      return rc
-
-    # OK, if here, we have an orgID and a token. Is the token valid?
-    token = rc.token
-    orgID = rc.orgID
-
-    rc = self.checkUser(token, orgID)
-
-    if not rc:
-      return rc
-
-    # Finally!
-    cred = rc.cred
-
-    return DataWireResult(ok=True, token=token, cred=cred, orgID=orgID)
+    return self.userCommonResult(rc)
 
   def userAuth(self, email, password, orgID=None):
     args = { 'password': password }
@@ -304,24 +307,7 @@ class Identity (object):
                     required=[ 'orgID', 'email', 'token' ]
                   )
 
-    if not rc:
-      return rc
-
-    # OK, if here, we have an orgID and a token. Is the token valid?
-    token = rc.token
-    orgID = rc.orgID
-    email = rc.email
-
-    # If they're doing user auth, they must be a user.
-    rc = self.checkUser(token, orgID)
-
-    if not rc:
-      return rc
-
-    # Finally!
-    cred = rc.cred
-
-    return DataWireResult(ok=True, token=token, cred=cred, orgID=orgID, email=email)
+    return self.userCommonResult(rc)
 
   def serviceCreate(self, orgID, token, serviceHandle):
     rc = self.post( target=[ 'v1', 'services', orgID ],
