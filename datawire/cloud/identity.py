@@ -309,6 +309,17 @@ class Identity (object):
 
     return self.userCommonResult(rc)
 
+  def userForgotPassword(self, email, orgID=None):
+    if orgID is not None:
+      args['orgID'] = orgID
+
+    rc = self.post( target=[ 'v1', 'forgot', email ],
+                    args=args,
+                    required=[ 'msg' ]
+                  )
+
+    return rc
+
   def serviceCreate(self, orgID, token, serviceHandle):
     rc = self.post( target=[ 'v1', 'services', orgID ],
                     token=token,
