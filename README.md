@@ -8,7 +8,7 @@ Installing as a User
 
 To install as an end user, use:
 
-```curl -L https://raw.githubusercontent.com/datawire/datawire-cli/develop/install.sh | bash -s --```
+```curl -L https://raw.githubusercontent.com/datawire/datawire-cli/master/install.sh | bash -s --```
 
 and stand back! You should get a nice clean install of the latest and greatest.
 
