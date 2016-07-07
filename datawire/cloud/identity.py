@@ -310,8 +310,10 @@ class Identity (object):
     return self.userCommonResult(rc)
 
   def userForgotPassword(self, email, orgID=None):
+    args=None
+
     if orgID is not None:
-      args['orgID'] = orgID
+      args = { 'orgID': orgID }
 
     rc = self.post( target=[ 'v1', 'forgot', email ],
                     args=args,
