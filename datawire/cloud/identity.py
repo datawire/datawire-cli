@@ -198,15 +198,20 @@ class Identity (object):
 
     return rc
 
-  def orgCreate(self, orgName, adminName, adminEmail, adminPassword, isATest=False):
+  def orgCreate(self, orgName, adminName, adminEmail, adminPassword, isATest=False, reason=None):
+    args={
+      "orgName": orgName,
+      "adminName": adminName,
+      "adminEmail": adminEmail,
+      "adminPassword": adminPassword,
+      "isATest": isATest
+    }
+
+    if reason:
+      args['reason'] = reason
+
     rc = self.post( target=[ 'v1', 'orgs' ],
-                    args={
-                      "orgName": orgName,
-                      "adminName": adminName,
-                      "adminEmail": adminEmail,
-                      "adminPassword": adminPassword,
-                      "isATest": isATest
-                    },
+                    args=args,
                     required=[ 'orgID', 'token' ]
                   )
 
