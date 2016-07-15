@@ -4,5 +4,6 @@ keys
 utilities
 
 *.pyc
+*.egg-info
 
 .coverage
