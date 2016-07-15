@@ -223,6 +223,7 @@ class Identity (object):
     orgID = rc.orgID
     meta = rc.meta
     userHash = rc.userHash
+    createdAt = rc.createdAt
 
     rc = self.checkOrgAdmin(token, orgID)
 
@@ -230,7 +231,8 @@ class Identity (object):
       return rc
 
     # Finally!
-    return DataWireResult(ok=True, orgID=orgID, token=token, meta=meta, userHash=userHash, cred=cred)
+    return DataWireResult(ok=True, orgID=orgID, token=token, meta=meta, userHash=userHash, createdAt=createdAt,
+                          cred=rc.cred)
 
   def userInvite(self, orgID, token, email, scopes=None):
     rc = self.post( target=[ 'v1', 'users', orgID ],
@@ -259,6 +261,7 @@ class Identity (object):
     token = rc.token
     meta = rc.meta
     userHash = rc.userHash
+    createdAt = rc.createdAt
 
     # Next up, make sure the token belongs to this org, and is a valid user token. 
     #
@@ -272,7 +275,8 @@ class Identity (object):
     # Finally!
     cred = rc.cred
 
-    return DataWireResult(ok=True, orgID=orgID, email=email, meta=meta, token=token, userHash=userHash, cred=cred)
+    return DataWireResult(ok=True, orgID=orgID, email=email, meta=meta, token=token, userHash=userHash, 
+                          createdAt=createdAt, cred=cred)
 
   def userAcceptInvitation(self, invitation, name, password):
     rc = self.put( target=[ 'v1', 'invitations', invitation ],
