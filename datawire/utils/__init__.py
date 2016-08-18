@@ -26,18 +26,37 @@ def prettyJSON(obj):
 
 class DataWireResult (UnicodeMixin):
   def __init__(self, ok=True, error=None, **kwargs):
-    self.keys = []
+    # OK, what gives? Why are we doing all this craziness with setattr plus a keydict and things like
+    # that? Well, we have a couple of goals here:
+    # 
+    # 1. If we do
+    #
+    #    result = DatawireResult.OK(goodThings=True, badThings=False)
+    #
+    # then we want both result.goodThings and result['goodThings'] to work, for setting or for getting,
+    # and we also want 
+    #
+    #    if "goodThings" in result: ...
+    #
+    # to work too. It turns out to be quite painful to make that work by overriding the . operator to look
+    # into a dict, but easy to do it by overriding the [] operator to look at object attributes... except 
+    # that the 'in' business is annoying to do without also having a separate stash of keys, and iterating 
+    # the set of keys that the user passed in is bloody impossible without a separate stash of keys.
+    #
+    # SO. self._keys is just a set of which keys are present. Attributes on self store the actual values.
+
+    self._keys = set()
 
     if ok:
       self.ok = True
-
-      for key in sorted(kwargs.keys()):
-        self.keys.append(key)
-        setattr(self, key, kwargs[key])
+      self.error = None     # you can't set ok and error at the same time
     else:
       self.ok = False
-      self.keys = [ 'error' ]
-      self.error = error
+
+      self['error'] = error
+
+    for key in kwargs:
+      self[key] = kwargs[key]
 
   def toDict(self):
     """ 
@@ -49,8 +68,8 @@ class DataWireResult (UnicodeMixin):
 
     dictified = { 'ok': self.ok }
 
-    for key in self.keys:
-      value = getattr(self, key)
+    for key in self._keys:
+      value = self[key]
 
       dictifier = getattr(value, 'toDict', None)
 
@@ -66,8 +85,18 @@ class DataWireResult (UnicodeMixin):
   def toJSON(self):
     return json.dumps(self.toDict())
 
+  def keys(self):
+    return iter(self._keys)
+
   def __setitem__(self, key, value):
+    self._keys.add(key)
     setattr(self, key, value)
+
+  def __getitem__(self, key):
+    return getattr(self, key)
+
+  def __contains__(self, key):
+    return key in self._keys
 
   def __nonzero__(self):
     return self.ok
@@ -75,11 +104,11 @@ class DataWireResult (UnicodeMixin):
   def __unicode__(self):
     return (u'<DWR %s %s>' % 
             ("OK" if self else "BAD",
-             " ".join([ '%s="%s"' % (key, getattr(self, key)) for key in self.keys ])))
+             " ".join([ '%s=%s' % (key, repr(getattr(self, key))) for key in sorted(self._keys) ])))
 
   @classmethod
-  def fromError(klass, error):
-    return DataWireResult(ok=False, error=error)
+  def fromError(klass, error, **kwargs):
+    return DataWireResult(ok=False, error=error, **kwargs)
 
   @classmethod
   def OK(klass, **kwargs):
@@ -88,7 +117,7 @@ class DataWireResult (UnicodeMixin):
   @classmethod
   def fromErrorAndResults(klass, error=None, **kwargs):
     if error:
-      return DataWireResult(ok=False, error=error)
+      return DataWireResult(ok=False, error=error, **kwargs)
     else:
       return DataWireResult(ok=True, **kwargs)
 
@@ -104,6 +133,7 @@ class DataWireResult (UnicodeMixin):
     """
 
     incoming = json.loads(inputJSON)
+    errorMessage = None
 
     if not isinstance(incoming, collections.Mapping):
       # WTF?
@@ -119,14 +149,21 @@ class DataWireResult (UnicodeMixin):
       errorMessage = incoming.get('error', None)
 
       if (errorMessage is None) or (not isinstance(errorMessage, basestring)):
+        # You can't have a key that's not OK and has no error.
         raise ValueError("incoming JSON with OK=False must have an 'error' element")
 
-      # Done.
-      return DataWireResult(ok=False, error=errorMessage)
-    else:
-      elements = { key: incoming[key] for key in incoming.keys() if key != 'ok' }
+    # OK, all's well. Make a copy of the incoming dict and smite the 'ok' and 'error' keys,
+    # since they don't get passed to the constructor as keyword args.
 
-      return DataWireResult(ok=True, **elements)
+    elements = dict(incoming);
+
+    if 'ok' in elements:
+      del(elements['ok'])
+
+    if 'error' in elements:
+      del(elements['error'])
+
+    return DataWireResult(ok=ok, error=errorMessage, **elements)
 
 # Likewise DataWireCredential.
 
