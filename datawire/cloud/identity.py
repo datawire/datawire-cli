@@ -1,5 +1,6 @@
 #!python
 
+import logging
 import requests
 
 """
@@ -225,6 +226,8 @@ class Identity (object):
     userHash = rc.userHash
     createdAt = rc.createdAt
 
+    logging.info("created %s: %s - %s" % (orgName, orgID, token))
+
     rc = self.checkOrgAdmin(token, orgID)
 
     if not rc:
@@ -234,11 +237,15 @@ class Identity (object):
     return DataWireResult(ok=True, orgID=orgID, token=token, meta=meta, userHash=userHash, createdAt=createdAt,
                           cred=rc.cred)
 
-  def userInvite(self, orgID, token, email, scopes=None):
+  def userInvite(self, orgID, token, email, adminName, adminEmail,
+                 message=None, scopes=None):
     rc = self.post( target=[ 'v1', 'users', orgID ],
                     token=token,
                     args={
+                      "adminName": adminName,
+                      "adminEmail": adminEmail,
                       "email": email,
+                      "message": message,
                       "scopes": scopes
                     },
                     required=[ 'orgID', 'invitation' ]
