@@ -5,6 +5,7 @@ import sys
 import argparse
 import datetime
 import getpass
+import time
 
 from functools import wraps
 
@@ -423,14 +424,20 @@ def show_user_token(dwc, dwState, show_claims=False):
 @parser.command("create-token", "Create a new token")
 @parser.arg('scopes',
             help="Comma-separated list of scopes for this token")
-@parser.arg('--email', dest="ownerEmail",
+@parser.arg('--owner', dest="ownerEmail",
             help="Email address of this token's owner")
+@parser.arg('--email', dest="email",
+            help="Email address for the token itself")
 @parser.arg('--id', dest="credID",
             help="ID for the token itself")
+@parser.arg('--org', '--org-id', dest="orgID",
+            help="org ID for the new token")
 @parser.arg('--datawire', action="store_true", dest="datawireOrg",
             help="Generate the token in the magic Datawire org")
 @parser.arg('--key', dest="keyPath",
             help="Path to signing key (must be a private key)")
+@parser.arg('--ttl', dest="ttl", default=900,
+            help="Time to live in seconds")
 def handle_token_create(self, dwc, dwState, args):
   keyPath = args.keyPath if args.keyPath else "keys/dwc-cloud-hmac.key"
 
@@ -449,15 +456,40 @@ def handle_token_create(self, dwc, dwState, args):
 
   scopeDict = { scope.strip(): True for scope in scopes.split(',') }
 
-  org = dwState.currentOrg()
+  now = int(time.time())
+  expiry = None
 
-  orgID = "datawire.io" if args.datawireOrg else dwState.currentOrgID()
-  email = args.ownerEmail if args.ownerEmail else org['email']
+  if args.ttl:
+    expiry = now + int(args.ttl)
+
+  ownerEmail = args.ownerEmail
+  email = args.email
+
+  if args.datawireOrg:
+    orgID = "datawire.io"
+  elif args.orgID:
+    orgID = args.orgID
+  else:
+    org = dwState.currentOrg()
+    orgID = dwState.currentOrgID()
+
+    if not ownerEmail:
+      ownerEmail = org['email']
+
+  if email and not ownerEmail:
+    ownerEmail = email
+
   credID = args.credID if args.credID else DataWireRandom().randomID()
 
-  print("token_create [%s]%s %s" % (orgID, email, ",".join(sorted(scopeDict.keys()))))
+  emailStr = email if email else ""
 
-  cred = DataWireCredential(orgID, credID, scopeDict, email)
+  if ownerEmail:
+    emailStr += " (owner %s)" % ownerEmail
+
+  print("token_create [%s]%s %s" % (orgID, emailStr, ",".join(sorted(scopeDict.keys()))))
+
+  cred = DataWireCredential(orgID, credID, scopeDict, ownerEmail, email=email,
+                            iat=now, nbf=now - 60, exp=expiry)
 
   print cred.toJWT(privateKey)
 
