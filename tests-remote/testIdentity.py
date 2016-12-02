@@ -18,7 +18,7 @@ from datawire.utils.keys import DataWireKey
 
 from datawire.cloud.identity import Identity
 
-# BaseURL = "https://identity.datawire.io"
+# BaseURL = "https://id.datawire.io"
 BaseURL = "http://localhost:8080"
 
 def basicSetup():

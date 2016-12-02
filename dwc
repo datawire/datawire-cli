@@ -26,7 +26,7 @@ class DWCParser (object):
 
     self.parser.add_argument('--registrar-url', '--base-url', '--baseurl',
                              action='store', dest='base_url',
-                             default='https://identity.datawire.io',
+                             default='https://id.datawire.io',
                              help='URL for Cloud Registrar')
 
     self.parser.add_argument('--local',
