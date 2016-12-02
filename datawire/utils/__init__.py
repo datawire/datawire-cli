@@ -191,6 +191,7 @@ class DataWireCredential (UnicodeMixin):
     'dw:reqSvc0': 'Able to request service tokens',
     'dw:service0': 'Service',
     'dw:user0': 'User',
+    'dw:doppelganger0': 'Doppelgangers welcome'
   }
 
   def __init__(self, orgID, credID, scopes, ownerEmail, email=None, tokenID=None, iat=None, nbf=None, exp=None):

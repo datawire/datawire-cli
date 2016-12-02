@@ -313,11 +313,14 @@ class Identity (object):
 
     return self.userCommonResult(rc)
 
-  def userAuth(self, email, password, orgID=None):
+  def userAuth(self, email, password, orgID=None, doppelganger=None):
     args = { 'password': password }
 
     if orgID is not None:
       args['orgID'] = orgID
+
+    if doppelganger:
+      args['doppelganger'] = doppelganger
 
     rc = self.post( target=[ 'v1', 'auth', email ],
                     args=args,
