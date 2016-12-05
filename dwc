@@ -25,15 +25,15 @@ class DWCParser (object):
     self.parser.add_argument('-q', '--quiet',
                              action='store_true', default=False, help='force silence')
 
-    self.parser.add_argument('--registrar-url', '--base-url', '--baseurl',
+    self.parser.add_argument('--idurl', '--id-url', '--registrar-url', '--base-url', '--baseurl',
                              action='store', dest='base_url',
                              default='https://id.datawire.io',
-                             help='URL for Cloud Registrar')
+                             help='URL for Identity Service')
 
     self.parser.add_argument('--local',
                              action='store_const', dest='base_url',
                              const='http://localhost:8080',
-                             help='Use a local Cloud Registrar')
+                             help='Use a local Identity Service')
 
     self.parser.add_argument('--state', '--state-path',
                              action='store', dest='state_path',
@@ -349,8 +349,11 @@ class PrettyCredential (object):
 
     return s
 
-def show_detailed_token(dwc, dwState, token):
-  rc = dwc.credentialFromToken(token, dwState.currentOrgID())
+def show_detailed_token(dwc, dwState, token, orgID=None):
+  if not orgID:
+    orgID = dwState.currentOrgID()
+
+  rc = dwc.credentialFromToken(token, orgID)
 
   if not rc:
     return rc
@@ -500,6 +503,9 @@ def handle_token_create(self, dwc, dwState, args):
             help="User to imitate")
 @parser.arg('--password', '--pw', 
             help='Your password (will prompt if not given)')
+@parser.arg('--show-claims', '--explain', '--claims',
+            action="store_true", dest="explain",
+            help='Show claims of received token')
 def handle_user_imitate(self, dwc, dwState, args):
   doppelganger = args.email
 
@@ -531,7 +537,10 @@ def handle_user_imitate(self, dwc, dwState, args):
   rc = dwc.userAuth(email, password, doppelganger=doppelganger)
 
   if rc:
-    print(rc.token)
+    if args.explain:
+      show_detailed_token(dwc, dwState, rc.token, orgID=rc.orgID)
+    else:
+      print(rc.token)
 
   return rc
 
